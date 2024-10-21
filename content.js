@@ -1,7 +1,5 @@
 (async function () {
-  const ITEMS_PER_PAGE = 36;
   const extensionId = chrome.runtime.id;
-  const language = "en-us";
 
   const isCorrectPage = () => /^https:\/\/www\.altered\.gg(\/.*)?$/.test(window.location.href);
 
@@ -12,9 +10,9 @@
   };
 
   const fetchCardData = async (accessToken, page) => {
-    const response = await fetch(`https://api.altered.gg/cards/stats?collection=true&itemsPerPage=${ITEMS_PER_PAGE}&page=${page}`, {
+    const response = await fetch(`https://api.altered.gg/cards/stats?collection=true&itemsPerPage=36&page=${page}`, {
       headers: {
-        'Accept-Language': language,
+        'Accept-Language': 'en-us',
         'Authorization': `Bearer ${accessToken}`,
       },
     });
@@ -37,7 +35,7 @@
     const allLinks = [];
     let page = 1;
     const initialData = await fetchCardData(accessToken, page);
-    const totalPages = Math.ceil((initialData['hydra:totalItems'] || 0) / ITEMS_PER_PAGE);
+    const totalPages = Math.ceil((initialData['hydra:totalItems'] || 0) / 36);
 
     for (page = 1; page <= totalPages; page++) {
       const cardData = page === 1 ? initialData : await fetchCardData(accessToken, page);
