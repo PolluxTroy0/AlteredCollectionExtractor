@@ -49,8 +49,8 @@
 
   const handleError = (message) => {
     const errorMap = {
-      'Please': 'To retrieve your collection, you first need to go to https://altered.gg and log in to your account !',
-      'Err01': 'To retrieve your collection, you first need to go to https://altered.gg and log in to your account !',
+      'Please': 'To retrieve your collection, you first need to go to https://www.altered.gg and log in to your account !',
+      'Err01': 'To retrieve your collection, you first need to go to https://www.altered.gg and log in to your account !',
       'Err02': 'Error retrieving collection (Err02) !',
       'Err03': 'Error retrieving collection (Err03) !',
       'Err04': 'Error retrieving collection (Err04) !',
@@ -63,7 +63,7 @@
 
   // Main logic
   try {
-    if (!isCorrectPage()) throw new Error('Please go to https://altered.gg !');
+    if (!isCorrectPage()) throw new Error('Please go to https://www.altered.gg !');
     const accessToken = getAccessToken();
     await getAllCardData(accessToken);
   } catch (error) {
