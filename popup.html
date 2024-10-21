@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<title>Altered - Collection Extractor</title>
+		<style>
+			body {
+				width: 60ch;
+				padding-left: 10px;
+				padding-right: 10px;
+				padding-bottom: 10px;
+				background-color: #fff;
+				position: relative;
+				box-sizing: border-box;
+				font-family: Arial, sans-serif;
+				display: flex;
+				flex-direction: column;
+				align-items: center;
+				margin: 0;
+			}
+			h1 {
+				margin-bottom: 10px;
+				color: #333;
+				text-align: center;
+			}
+			textarea {
+				width: 100%;
+				height: 180px;
+				border: 1px solid #ccc;
+				border-radius: 5px;
+				font-size: 16px;
+				resize: none;
+				margin-bottom: 10px;
+				display: block;
+			}
+			.button-container {
+				display: flex;
+				justify-content: center;
+				width: 100%;
+				margin-top: 10px;
+			}
+			button {
+				width: 100%;
+				padding: 10px;
+				font-size: 16px;
+				background-color: #007bff;
+				color: white;
+				border: none;
+				border-radius: 5px;
+				cursor: pointer;
+				box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.2);
+				transition: background-color 0.3s;
+			}
+			button:hover {
+				background-color: #0056b3;
+			}
+			.btn-info {
+				font-weight: 700;
+				border-radius: 1rem;
+			}
+			#loadingMessage, #errorMessage {
+				display: flex;
+				align-items: center;
+				justify-content: center;
+				height: 265px;
+				font-size: 16px;
+				background-color: #fff;
+				position: absolute;
+				top: 50px;
+				left: 0;
+				width: 100%;
+				z-index: 10;
+				box-sizing: border-box;
+				text-align: center;
+			}
+			#loadingMessage {
+				color: #007bff;
+			}
+			#errorMessage {
+				color: red;
+				display: none;
+			}
+			footer {
+				margin-top: 20px;
+				font-size: 12px;
+				color: #777;
+				text-align: center;
+			}
+		</style>
+	</head>
+	<body>
+		<h1>Altered - Collection Extractor</h1>
+		<div id="loadingMessage">Retrieving cards collection, please wait...<br/>Do not close this window or leave your browser !</div>
+		<div id="errorMessage"></div>
+		<textarea id="imageLinks" readonly></textarea>
+		<div class="button-container">
+			<button id="copyButton" class="btn btn-info">Copy Collection to Clipboard</button>
+		</div>
+		<footer>This browser extension is not affiliated with Altered !<br/>It was created by/for <a href="https://altered-db.com" target="_blank">Altered-DB</a>.</footer>
+		<script src="popup.js"></script>
+	</body>
+</html>
