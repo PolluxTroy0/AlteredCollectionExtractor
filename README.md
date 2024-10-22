@@ -5,3 +5,5 @@ You can download it here : https://chromewebstore.google.com/detail/altered-coll
 
 WARNING: This extension uses sensitive data. Do not use it if you do not trust the source.
 I disclaim all responsibility for any issues or misuse that may arise from using this extension.
+
+You can review the source code of the acutal extension version here : https://robwu.nl/crxviewer/?crx=https%3A%2F%2Fchromewebstore.google.com%2Fdetail%2Faltered-collection-extrac%2Foilacpbjlailfffkpmpklcgipomnfpom
