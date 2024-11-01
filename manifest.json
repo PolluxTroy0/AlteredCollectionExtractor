@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "Altered - Collection Extractor",
-  "version": "1.8",
+  "version": "1.9",
   "description": "Extract you cards collection from Altered TCG website, using the official API, in the following format: Quantity ID.",
   "permissions": [
     "activeTab",
