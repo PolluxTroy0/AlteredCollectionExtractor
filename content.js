@@ -37,27 +37,22 @@
 
         members.forEach(card => {
             const reference = `${card.reference}`;
-            console.log(`Processing card: ${reference}`); // Log pour chaque carte traitée
             
-            // Pour la collection
+            // In Collection
             if (card.inMyCollection > 0) {
                 collectionLinks.push(`${card.inMyCollection} ${reference}`);
             }
 
-            // Pour la liste de souhaits
+            // In Want List
             if (card.inMyWantlist) {
                 wantListLinks.push('1 ' + reference);
-                console.log(`Added to Want List: ${reference}`); // Log pour Want List
             } else {
-                console.log(`Not added to Want List (inMyWantlist: ${card.inMyWantlist})`); // Log si non ajouté
             }
 
-            // Pour la liste de trading
+            // In Trade List
             if (card.inMyTradelist > 0) {
                 tradeListLinks.push(`${card.inMyTradelist} ${reference}`);
-                console.log(`Added to Trade List: ${card.inMyTradelist} ${reference}`); // Log pour Trade List
             } else {
-                console.log(`Not added to Trade List (inMyTradelist: ${card.inMyTradelist})`); // Log si non ajouté
             }
         });
 
