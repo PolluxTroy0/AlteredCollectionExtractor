@@ -5,8 +5,10 @@ document.addEventListener('DOMContentLoaded', function() {
 	const wantListTextarea = document.getElementById('WantListText');
 	const tradeListTextarea = document.getElementById('TradeListText');
 
+	// Affiche le message de chargement au démarrage
 	loadingMessage.style.display = 'flex';
 
+	// Exécute content.js dans l'onglet actif
 	chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
 		chrome.scripting.executeScript({
 				target: { tabId: tabs[0].id },
@@ -20,6 +22,7 @@ document.addEventListener('DOMContentLoaded', function() {
 		);
 	});
 
+	// Boutons de copie pour chaque liste
 	document.getElementById('copyButton1').addEventListener('click', function() {
 		copyToClipboard(collectionTextarea);
 	});
@@ -32,12 +35,20 @@ document.addEventListener('DOMContentLoaded', function() {
 		copyToClipboard(wantListTextarea);
 	});
 
+	// Écoute les messages envoyés par content.js
 	chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 		if (request.action === 'getLinks') {
+			// Affiche les liens de chaque liste dans les textareas
 			collectionTextarea.value = request.links.collection.join('\n');
 			wantListTextarea.value = request.links.want.join('\n');
 			tradeListTextarea.value = request.links.trade.join('\n');
 
+			// Met à jour les compteurs pour chaque liste
+			document.getElementById('collectioncount').textContent = request.counts.collectionCount;
+			document.getElementById('tradelistcount').textContent = request.counts.tradeCount;
+			document.getElementById('wantlistcount').textContent = request.counts.wantCount;
+
+			// Cache le message de chargement et les erreurs, puis affiche les textareas
 			loadingMessage.style.display = 'none';
 			errorMessage.style.display = 'none';
 			collectionTextarea.style.display = 'block';
@@ -52,6 +63,7 @@ document.addEventListener('DOMContentLoaded', function() {
 		}
 	});
 
+	// Gère les erreurs en affichant un message dans errorMessage
 	function handleError(message) {
 		loadingMessage.style.display = 'none';
 		errorMessage.textContent = message;
@@ -61,6 +73,7 @@ document.addEventListener('DOMContentLoaded', function() {
 		tradeListTextarea.style.display = 'none';
 	}
 
+	// Fonction pour copier le texte d'un textarea dans le presse-papier
 	function copyToClipboard(textarea) {
 		textarea.select();
 		document.execCommand('copy');

@@ -34,6 +34,9 @@
         const collectionLinks = [];
         const tradeListLinks = [];
         const wantListLinks = [];
+        let collectionCount = 0;
+        let tradeCount = 0;
+        let wantCount = 0;
 
         members.forEach(card => {
             const reference = `${card.reference}`;
@@ -41,56 +44,69 @@
             // In Collection
             if (card.inMyCollection > 0) {
                 collectionLinks.push(`${card.inMyCollection} ${reference}`);
+                collectionCount += card.inMyCollection;
             }
 
             // In Want List
             if (card.inMyWantlist) {
                 wantListLinks.push('1 ' + reference);
-            } else {
+                wantCount += 1;
             }
 
             // In Trade List
             if (card.inMyTradelist > 0) {
                 tradeListLinks.push(`${card.inMyTradelist} ${reference}`);
-            } else {
+                tradeCount += card.inMyTradelist;
             }
         });
 
-        return { collectionLinks, tradeListLinks, wantListLinks };
+        return { collectionLinks, tradeListLinks, wantListLinks, collectionCount, tradeCount, wantCount };
     };
 
     // Get Cards Data
-    const getAllCardData = async (accessToken) => {
-        const allLinks = {
-            collection: [],
-            trade: [],
-            want: []
-        };
-        let page = 1;
-        const initialData = await fetchCardData(accessToken, page);
-        const totalPages = Math.ceil((initialData['hydra:totalItems'] || 0) / 36);
-		const loadingMessageElement = document.getElementById("loadingMessage");
+	const getAllCardData = async (accessToken) => {
+		const allLinks = {
+			collection: [],
+			trade: [],
+			want: []
+		};
+		let collectionTotal = 0;
+		let tradeTotal = 0;
+		let wantTotal = 0;
+		let page = 1;
+		const initialData = await fetchCardData(accessToken, page);
+		const totalPages = Math.ceil((initialData['hydra:totalItems'] || 0) / 36);
 
-        for (page = 1; page <= totalPages; page++) {
+		for (page = 1; page <= totalPages; page++) {
+			const progressPercent = Math.round((page / totalPages) * 100);
+			chrome.runtime.sendMessage({
+				action: 'updateLoadingMessage',
+				message: `Retrieving cards collection, please wait...<br/>Do not close this window or leave your browser !<br/><br/>Progress : ${progressPercent}%`
+			});
 
-            const progressPercent = Math.round((page / totalPages) * 100);
-            chrome.runtime.sendMessage({
-                action: 'updateLoadingMessage',
-                message: `Retrieving cards collection, please wait...<br/>Do not close this window or leave your browser !<br/><br/>Progress : ${progressPercent}%`
-            });
+			const cardData = page === 1 ? initialData : await fetchCardData(accessToken, page);
+			const links = extractLinks(cardData);
+			allLinks.collection.push(...links.collectionLinks);
+			allLinks.trade.push(...links.tradeListLinks);
+			allLinks.want.push(...links.wantListLinks);
 			
-            const cardData = page === 1 ? initialData : await fetchCardData(accessToken, page);
-            const links = extractLinks(cardData);
-            allLinks.collection.push(...links.collectionLinks);
-            allLinks.trade.push(...links.tradeListLinks);
-            allLinks.want.push(...links.wantListLinks);
-        }
+			// Cumul des quantités pour chaque liste
+			collectionTotal += links.collectionCount;
+			tradeTotal += links.tradeCount;
+			wantTotal += links.wantCount;
+		}
 
-        chrome.runtime.sendMessage({
-            action: 'getLinks',
-            links: allLinks
-        });
-    };
+		// Envoi le nombre total de cartes pour chaque liste
+		chrome.runtime.sendMessage({
+			action: 'getLinks',
+			links: allLinks,
+			counts: {
+				collectionCount: collectionTotal,
+				tradeCount: tradeTotal,
+				wantCount: wantTotal
+			}
+		});
+	};
 
     // Errors Handling
     const handleError = (message) => {

@@ -14,7 +14,7 @@ You can review the source code here : https://github.com/PolluxTroy0/AlteredColl
 		<title>Altered - Collection Extractor</title>
 		<style>
 			body {
-				width: 60ch;
+				width: 70ch;
 				padding-left: 10px;
 				padding-right: 10px;
 				padding-bottom: 10px;
@@ -22,7 +22,7 @@ You can review the source code here : https://github.com/PolluxTroy0/AlteredColl
 				position: relative;
 				box-sizing: border-box;
 				font-family: Arial, sans-serif;
-				display: flex;
+				/*display: flex;*/
 				flex-direction: column;
 				align-items: center;
 				margin: 0;
@@ -72,7 +72,7 @@ You can review the source code here : https://github.com/PolluxTroy0/AlteredColl
 			.btn-info {
 				font-weight: 700;
 				border-radius: 1rem;
-				width: 325px;
+				width: 350px;
 			}
 
 			#loadingMessage,
@@ -84,7 +84,7 @@ You can review the source code here : https://github.com/PolluxTroy0/AlteredColl
 				font-size: 16px;
 				background-color: #fff;
 				position: absolute;
-				top: 50px;
+				top: 35px;
 				left: 0;
 				width: 100%;
 				z-index: 10;
@@ -115,7 +115,7 @@ You can review the source code here : https://github.com/PolluxTroy0/AlteredColl
 			div.tab-frame label {
 				display: block;
 				float: left;
-				padding: 5px 10px;
+				padding: 5px 5px;
 				cursor: pointer;
 				margin-left: 10px;
 			}
@@ -146,13 +146,13 @@ You can review the source code here : https://github.com/PolluxTroy0/AlteredColl
 		
 		<div class="tab-frame">
 			<input type="radio" checked name="tab" id="tab1">
-			<label for="tab1">Collection</label>
+			<label for="tab1">Collection (<span id="collectioncount">0</span>)</label>
 
 			<input type="radio" name="tab" id="tab2">
-			<label for="tab2">Trade List</label>
+			<label for="tab2">Trade List (<span id="tradelistcount">0</span>)</label>
 
 			<input type="radio" name="tab" id="tab3">
-			<label for="tab3">Want List</label>
+			<label for="tab3">Want List (<span id="wantlistcount">0</span>)</label>
  
 			<div class="tab">
 				<textarea id="imageLinks" readonly></textarea>
