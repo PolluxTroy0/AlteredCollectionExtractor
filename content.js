@@ -69,8 +69,16 @@
         let page = 1;
         const initialData = await fetchCardData(accessToken, page);
         const totalPages = Math.ceil((initialData['hydra:totalItems'] || 0) / 36);
+		const loadingMessageElement = document.getElementById("loadingMessage");
 
         for (page = 1; page <= totalPages; page++) {
+
+            const progressPercent = Math.round((page / totalPages) * 100);
+            chrome.runtime.sendMessage({
+                action: 'updateLoadingMessage',
+                message: `Retrieving cards collection, please wait...<br/>Do not close this window or leave your browser !<br/><br/>Progress : ${progressPercent}%`
+            });
+			
             const cardData = page === 1 ? initialData : await fetchCardData(accessToken, page);
             const links = extractLinks(cardData);
             allLinks.collection.push(...links.collectionLinks);
