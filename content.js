@@ -90,13 +90,11 @@
 			allLinks.trade.push(...links.tradeListLinks);
 			allLinks.want.push(...links.wantListLinks);
 			
-			// Cumul des quantités pour chaque liste
 			collectionTotal += links.collectionCount;
 			tradeTotal += links.tradeCount;
 			wantTotal += links.wantCount;
 		}
 
-		// Envoi le nombre total de cartes pour chaque liste
 		chrome.runtime.sendMessage({
 			action: 'getLinks',
 			links: allLinks,
