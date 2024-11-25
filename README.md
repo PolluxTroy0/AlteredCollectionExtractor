@@ -6,6 +6,7 @@ You can export :
 - Cards Collection
 - Want List
 - Trade List
+- Collection CSV (Tab Separrated)
 
 You can download it here : https://chromewebstore.google.com/detail/altered-collection-extrac/oilacpbjlailfffkpmpklcgipomnfpom
 
