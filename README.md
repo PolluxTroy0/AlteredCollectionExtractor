@@ -1,5 +1,8 @@
-This browser extension lets you download your card collection from Altered.gg, using the official API, in the following format: Quantity ID.
-Everything is done locally and stays within your browser.
+This browser extension lets you download your card collection, your want list and your trade list from Altered.gg, using the official API, in the following format: Quantity ID.
+
+You can also retrieve your collection in an CSV format with cards name, faction, rarity and type.
+
+Everything is done locally and stays within your browser for security reason.
 
 You can export :
 
