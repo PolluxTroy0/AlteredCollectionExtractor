@@ -4,6 +4,7 @@ document.addEventListener('DOMContentLoaded', function() {
 	const collectionTextarea = document.getElementById('imageLinks');
 	const wantListTextarea = document.getElementById('WantListText');
 	const tradeListTextarea = document.getElementById('TradeListText');
+	const collectionCSVTextarea = document.getElementById('CollectionCSV');
 
 	loadingMessage.style.display = 'flex';
 
@@ -31,12 +32,17 @@ document.addEventListener('DOMContentLoaded', function() {
 	document.getElementById('copyButton3').addEventListener('click', function() {
 		copyToClipboard(wantListTextarea);
 	});
+	
+	document.getElementById('copyButton4').addEventListener('click', function() {
+		copyToClipboard(collectionCSVTextarea);
+	});
 
 	chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
 		if (request.action === 'getLinks') {
 			collectionTextarea.value = request.links.collection.join('\n');
 			wantListTextarea.value = request.links.want.join('\n');
 			tradeListTextarea.value = request.links.trade.join('\n');
+			collectionCSVTextarea.value = request.links.detailedCollection.join('\n');
 
 			document.getElementById('collectioncount').textContent = request.counts.collectionCount;
 			document.getElementById('tradelistcount').textContent = request.counts.tradeCount;
