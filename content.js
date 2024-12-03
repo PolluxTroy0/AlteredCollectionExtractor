@@ -82,9 +82,10 @@
 				const factionName = cardDetails.mainFaction?.name || '?';
 				const cardName = cardDetails.name || '?';
 				const cardType = cardDetails.cardType?.name || '?';
+				const cardSet = reference.split('_')[1];
 
 				detailedCollectionLinks.push(
-					`${factionName}\t${rarityName}\t${cardType}\t${statCard.inMyCollection}\t${cardName}`
+					`${factionName}\t${rarityName}\t${cardType}\t${cardSet}\t${statCard.inMyCollection}\t${cardName}`
 				);
 			}
 
