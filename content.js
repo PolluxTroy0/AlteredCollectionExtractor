@@ -10,6 +10,8 @@
     };
 
     const language = getLanguageFromURL();
+	
+	const itemsPerPage = 36;
 
     // Get Token
     const getAccessToken = () => {
@@ -20,7 +22,7 @@
 
 	// Get Raw Card Collection (Stats)
 	const fetchCardDataStats = async (accessToken, page) => {
-		const response = await fetch(`https://api.altered.gg/cards/stats?collection=true&itemsPerPage=36&page=${page}&locale=${language}`, {
+		const response = await fetch(`https://api.altered.gg/cards/stats?collection=true&itemsPerPage=${itemsPerPage}&page=${page}&locale=${language}`, {
 			headers: {
 				'Accept-Language': language,
 				'Authorization': `Bearer ${accessToken}`,
@@ -37,7 +39,7 @@
 
 	// Get Raw Card Collection (Cards)
 	const fetchCardDataCards = async (accessToken, page) => {
-		const response = await fetch(`https://api.altered.gg/cards?collection=true&itemsPerPage=36&page=${page}&locale=${language}`, {
+		const response = await fetch(`https://api.altered.gg/cards?collection=true&itemsPerPage=${itemsPerPage}&page=${page}&locale=${language}`, {
 			headers: {
 				'Accept-Language': language,
 				'Authorization': `Bearer ${accessToken}`,
@@ -124,10 +126,89 @@
 		let collectionTotal = 0;
 		let tradeTotal = 0;
 		let wantTotal = 0;
+
+		// Récupérer les données de la première page pour obtenir le nombre total d'éléments
+		const initialStatsData = await fetchCardDataStats(accessToken, 1);
+		const totalPages = Math.ceil((initialStatsData['hydra:totalItems'] || 0) / itemsPerPage);
+
+		// Fonction pour gérer la progression et les résultats
+		let completedRequests = 0;
+
+		const handleProgress = () => {
+			completedRequests += 1;
+			const progressPercent = Math.round((completedRequests / totalPages) * 100);
+			chrome.runtime.sendMessage({
+				action: 'updateLoadingMessage',
+				message: `Retrieving cards collection, please wait...<br/>Do not close this window or leave your browser !<br/><br/>Progress : ${progressPercent}%`
+			});
+		};
+
+		// Créer et gérer les promesses
+		const fetchPromises = Array.from({ length: totalPages }, (_, i) => {
+			const page = i + 1;
+			return Promise.all([
+				fetchCardDataStats(accessToken, page),
+				fetchCardDataCards(accessToken, page)
+			])
+				.then(([statsData, cardsData]) => {
+					handleProgress();
+					return { statsData, cardsData };
+				})
+				.catch((error) => {
+					handleProgress();
+					console.error(`Error fetching data for page ${page}:`, error);
+					return null; // Ignore errors for this example
+				});
+		});
+
+		// Attendre que toutes les requêtes soient terminées
+		const results = await Promise.all(fetchPromises);
+
+		// Traiter les résultats des requêtes terminées
+		results.forEach((result) => {
+			if (result) {
+				const { statsData, cardsData } = result;
+				const links = extractLinks(statsData, cardsData);
+
+				allLinks.collection.push(...links.collectionLinks);
+				allLinks.trade.push(...links.tradeListLinks);
+				allLinks.want.push(...links.wantListLinks);
+				allLinks.detailedCollection.push(...links.detailedCollectionLinks);
+
+				collectionTotal += links.collectionCount;
+				tradeTotal += links.tradeCount;
+				wantTotal += links.wantCount;
+			}
+		});
+
+		// Envoyer les résultats finaux
+		chrome.runtime.sendMessage({
+			action: 'getLinks',
+			links: allLinks,
+			counts: {
+				collectionCount: collectionTotal,
+				tradeCount: tradeTotal,
+				wantCount: wantTotal
+			}
+		});
+	};
+
+/*
+	// Get All Card Data
+	const getAllCardData = async (accessToken) => {
+		const allLinks = {
+			collection: [],
+			trade: [],
+			want: [],
+			detailedCollection: []
+		};
+		let collectionTotal = 0;
+		let tradeTotal = 0;
+		let wantTotal = 0;
 		let page = 1;
 
 		const initialStatsData = await fetchCardDataStats(accessToken, page);
-		const totalPages = Math.ceil((initialStatsData['hydra:totalItems'] || 0) / 36);
+		const totalPages = Math.ceil((initialStatsData['hydra:totalItems'] || 0) / itemsPerPage);
 
 		for (page = 1; page <= totalPages; page++) {
 			const progressPercent = Math.round((page / totalPages) * 100);
@@ -163,6 +244,7 @@
 			}
 		});
 	};
+*/
 
     // Error Handling
     const handleError = (message) => {
