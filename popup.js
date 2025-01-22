@@ -1,78 +1,267 @@
-document.addEventListener('DOMContentLoaded', function() {
-	const loadingMessage = document.getElementById('loadingMessage');
-	const errorMessage = document.getElementById('errorMessage');
-	const collectionTextarea = document.getElementById('imageLinks');
-	const wantListTextarea = document.getElementById('WantListText');
-	const tradeListTextarea = document.getElementById('TradeListText');
-	const collectionCSVTextarea = document.getElementById('CollectionCSV');
+document.addEventListener("DOMContentLoaded", async () => {
+    // Compatibilité Chrome & Firefox
+    const browser = window.browser || window.chrome;
 
-	loadingMessage.style.display = 'flex';
+    // Sélection des divs et textareas
+    const errorMessageDiv = document.getElementById("errorMessage");
+    const loadingMessageDiv = document.getElementById("loadingMessage");
+    const mainDiv = document.getElementById("main");
+    const collectionTextarea = document.getElementById("collectionTextarea");
+    const wantListTextarea = document.getElementById("wantListTextarea");
+    const tradeListTextarea = document.getElementById("tradeListTextarea");
+    const collectionCSVTextarea = document.getElementById("collectionCSVTextarea");
 
-	chrome.tabs.query({ active: true, currentWindow: true }, function(tabs) {
-		chrome.scripting.executeScript({
-				target: { tabId: tabs[0].id },
-				files: ['content.js']
-			},
-			(results) => {
-				if (chrome.runtime.lastError) {
-					handleError('To retrieve your collection, you first need to go to https://altered.gg and log in to your account !');
-				}
-			}
-		);
-	});
+    // Sélection des compteurs pour mise à jour
+    const collectionCountSpan = document.getElementById("collectioncount");
+    const tradeListCountSpan = document.getElementById("tradelistcount");
+    const wantListCountSpan = document.getElementById("wantlistcount");
 
-	document.getElementById('copyButton1').addEventListener('click', function() {
-		copyToClipboard(collectionTextarea);
-	});
+    // Sélection des boutons de copie
+    const copyCollectionButton = document.getElementById("copyCollectionButton");
+    const copyWantListButton = document.getElementById("copyWantListButton");
+    const copyTradeListButton = document.getElementById("copyTradeListButton");
+    const copyCollectionCSVButton = document.getElementById("copyCollectionCSVButton");
 
-	document.getElementById('copyButton2').addEventListener('click', function() {
-		copyToClipboard(tradeListTextarea);
-	});
+    // Fonction utilitaire pour copier le contenu d'un textarea
+    const copyToClipboard = (textarea) => {
+        textarea.select();
+        textarea.setSelectionRange(0, textarea.value.length); // Pour s'assurer que tout le contenu est sélectionné
+        document.execCommand("copy");
+    };
 
-	document.getElementById('copyButton3').addEventListener('click', function() {
-		copyToClipboard(wantListTextarea);
-	});
-	
-	document.getElementById('copyButton4').addEventListener('click', function() {
-		copyToClipboard(collectionCSVTextarea);
-	});
+    // Écouteurs sur les boutons de copie
+    copyCollectionButton.addEventListener("click", () => copyToClipboard(collectionTextarea));
+    copyWantListButton.addEventListener("click", () => copyToClipboard(wantListTextarea));
+    copyTradeListButton.addEventListener("click", () => copyToClipboard(tradeListTextarea));
+    copyCollectionCSVButton.addEventListener("click", () => copyToClipboard(collectionCSVTextarea));
 
-	chrome.runtime.onMessage.addListener(function(request, sender, sendResponse) {
-		if (request.action === 'getLinks') {
-			collectionTextarea.value = request.links.collection.join('\n');
-			wantListTextarea.value = request.links.want.join('\n');
-			tradeListTextarea.value = request.links.trade.join('\n');
-			collectionCSVTextarea.value = request.links.detailedCollection.join('\n');
+    // Affiche le message de chargement au départ
+    errorMessageDiv.style.display = "none";
+    mainDiv.style.display = "none";
+    loadingMessageDiv.style.display = "flex";
+    
+    const updateLoadingMessage = (progress) => {
+        loadingMessageDiv.innerHTML = `
+            Retrieving cards collection, please wait...<br>
+            Do not close this window or leave your browser!<br><br>
+            Progress: ${progress}%
+        `;
+    };
 
-			document.getElementById('collectioncount').textContent = request.counts.collectionCount;
-			document.getElementById('tradelistcount').textContent = request.counts.tradeCount;
-			document.getElementById('wantlistcount').textContent = request.counts.wantCount;
+    try {
+        // Vérification du domaine de l'onglet actif
+        const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+        if (tabs.length === 0 || !tabs[0].url) {
+            throw new Error("Err01 : Unable to get the active tab !");
+        }
 
-			loadingMessage.style.display = 'none';
-			errorMessage.style.display = 'none';
-			collectionTextarea.style.display = 'block';
-			wantListTextarea.style.display = 'block';
-			tradeListTextarea.style.display = 'block';
-		} else if (request.action === 'getError') {
-			handleError(request.message);
-		} else if (request.action === 'updateLoadingMessage') {
-			if (loadingMessage) {
-				loadingMessage.innerHTML = request.message;
-			}
-		}
-	});
+        const currentTabDomain = new URL(tabs[0].url).hostname;
 
-	function handleError(message) {
-		loadingMessage.style.display = 'none';
-		errorMessage.textContent = message;
-		errorMessage.style.display = 'flex';
-		collectionTextarea.style.display = 'none';
-		wantListTextarea.style.display = 'none';
-		tradeListTextarea.style.display = 'none';
-	}
+        if (!currentTabDomain.endsWith("altered.gg")) {
+            throw new Error("Err02 : Please go to https://altered.gg and login into your account !");
+        }
 
-	function copyToClipboard(textarea) {
-		textarea.select();
-		document.execCommand('copy');
-	}
+        // Injection de script pour récupérer le contenu HTML de la page
+        const [response] = await browser.scripting.executeScript({
+            target: { tabId: tabs[0].id },
+            func: () => document.documentElement.innerHTML,
+        });
+
+        const pageHTML = response.result;
+
+        // Vérification de la connexion utilisateur avec getAccessToken
+        const getAccessToken = () => {
+            const tokenMatch = pageHTML.match(/"accessToken":"(.*?)"/);
+            if (!tokenMatch) throw new Error("Err03 : Please login into your account !");
+            return tokenMatch[1];
+        };
+
+        const accessToken = getAccessToken();
+
+        // Fonction pour récupérer les statistiques de la collection de cartes
+        const fetchCardDataStats = async (accessToken, page) => {
+            const itemsPerPage = 50; // Vous pouvez ajuster cela en fonction de votre besoin
+            const language = 'en';  // Vous pouvez ajuster la langue si nécessaire
+            const response = await fetch(`https://api.altered.gg/cards/stats?collection=true&itemsPerPage=${itemsPerPage}&page=${page}&locale=${language}`, {
+                headers: {
+                    'Accept-Language': language,
+                    'Authorization': `Bearer ${accessToken}`,
+                },
+            });
+            if (!response.ok) throw new Error(`Err04 : Invalid response : ${response.statusText}`);
+            const rawText = await response.text();
+            try {
+                return JSON.parse(rawText);
+            } catch {
+                throw new Error(`Err05 : Invalid JSON : ${rawText}`);
+            }
+        };
+
+        // Fonction pour récupérer les cartes de la collection de l'utilisateur
+        const fetchCardDataCards = async (accessToken, page) => {
+            const itemsPerPage = 50; // Nombre d'éléments par page
+            const language = 'en';  // Langue à utiliser pour l'API
+            const response = await fetch(`https://api.altered.gg/cards?collection=true&itemsPerPage=${itemsPerPage}&page=${page}&locale=${language}`, {
+                headers: {
+                    'Accept-Language': language,
+                    'Authorization': `Bearer ${accessToken}`,
+                },
+            });
+            if (!response.ok) throw new Error(`Err06 : Invalid response : ${response.statusText}`);
+            const rawText = await response.text();
+            try {
+                return JSON.parse(rawText);
+            } catch {
+                throw new Error(`Err07 : Invalid JSON : ${rawText}`);
+            }
+        };
+
+        // Fonction pour extraire les liens et les détails
+        const extractLinks = (statsData, cardsData) => {
+            const statsMembers = statsData?.['hydra:member'];
+            const cardsMembers = cardsData?.['hydra:member'];
+            if (!statsMembers || !cardsMembers) throw new Error('Err08 - Invalid data format !');
+
+            const collectionLinks = [];
+            const detailedCollectionLinks = [];
+            const tradeListLinks = [];
+            const wantListLinks = [];
+            let collectionCount = 0;
+            let tradeCount = 0;
+            let wantCount = 0;
+
+            statsMembers.forEach((statCard) => {
+                const reference = `${statCard.reference}`;
+                const cardDetails = cardsMembers.find(card => card.reference === statCard.reference);
+
+                // In Collection (Stats)
+                if (statCard.inMyCollection > 0) {
+                    collectionLinks.push(`${statCard.inMyCollection} ${reference}`);
+                    collectionCount += statCard.inMyCollection;
+                }
+
+                // In Collection (Cards CSV)
+                if (statCard.inMyCollection > 0 && cardDetails) {
+                    const rarityName = cardDetails.rarity?.name || '?';
+                    const factionName = cardDetails.mainFaction?.name || '?';
+                    const cardName = cardDetails.name || '?';
+                    const cardType = cardDetails.cardType?.name || '?';
+                    const cardSet = reference.split('_')[1];
+
+                    detailedCollectionLinks.push(
+                        `${factionName}\t${rarityName}\t${cardType}\t${cardSet}\t${statCard.inMyCollection}\t${cardName}`
+                    );
+                }
+
+                // In Want List (Stats)
+                if (statCard.inMyWantlist) {
+                    wantListLinks.push(`1 ${reference}`);
+                    wantCount += 1;
+                }
+
+                // In Trade List (Stats)
+                if (statCard.inMyTradelist > 0) {
+                    tradeListLinks.push(`${statCard.inMyTradelist} ${reference}`);
+                    tradeCount += statCard.inMyTradelist;
+                }
+            });
+
+            return {
+                collectionLinks,
+                detailedCollectionLinks,
+                tradeListLinks,
+                wantListLinks,
+                collectionCount,
+                tradeCount,
+                wantCount
+            };
+        };
+
+        // Fonction principale pour récupérer toutes les données des cartes
+        const getAllCardData = async (accessToken) => {
+            const allLinks = {
+                collection: [],
+                trade: [],
+                want: [],
+                detailedCollection: []
+            };
+
+            let collectionTotal = 0;
+            let tradeTotal = 0;
+            let wantTotal = 0;
+
+            const initialStatsData = await fetchCardDataStats(accessToken, 1);
+            const totalPages = Math.ceil((initialStatsData['hydra:totalItems'] || 0) / 36);
+            const totalRequests = totalPages * 2; // Chaque page nécessite 2 requêtes : stats + cartes
+            let completedRequests = 0;
+
+            // Fonction pour gérer la progression
+            const updateProgress = () => {
+                const progressPercent = Math.round((completedRequests / totalRequests) * 100);
+                updateLoadingMessage(progressPercent);
+            };
+
+            // Fonction pour créer une tâche pour une page
+            const fetchPageData = async (page) => {
+                const [statsData, cardsData] = await Promise.all([ 
+                    fetchCardDataStats(accessToken, page),
+                    fetchCardDataCards(accessToken, page)
+                ]);
+
+                const links = extractLinks(statsData, cardsData);
+
+                allLinks.collection.push(...links.collectionLinks);
+                allLinks.trade.push(...links.tradeListLinks);
+                allLinks.want.push(...links.wantListLinks);
+                allLinks.detailedCollection.push(...links.detailedCollectionLinks);
+
+                collectionTotal += links.collectionCount;
+                tradeTotal += links.tradeCount;
+                wantTotal += links.wantCount;
+
+                // Mettre à jour les requêtes terminées et la progression
+                completedRequests += 2; // Une page correspond à 2 requêtes
+                updateProgress();
+            };
+
+            // Fonction pour exécuter les requêtes en parallèle avec une limite
+            const fetchInBatches = async (startPage, endPage, batchSize) => {
+                const pages = [];
+                for (let page = startPage; page <= endPage; page++) {
+                    pages.push(page);
+                }
+
+                while (pages.length > 0) {
+                    const batch = pages.splice(0, batchSize); // Extraire les pages pour ce lot
+                    await Promise.all(batch.map(fetchPageData)); // Effectuer les requêtes du lot
+                }
+            };
+
+            // Lancement des requêtes avec une limite de 5 requêtes simultanées
+            await fetchInBatches(1, totalPages, 5);
+
+            // Mise à jour des textareas
+            collectionTextarea.value = allLinks.collection.join('\n');
+            wantListTextarea.value = allLinks.want.join('\n');
+            tradeListTextarea.value = allLinks.trade.join('\n');
+            collectionCSVTextarea.value = allLinks.detailedCollection.join('\n');
+
+            // Mise à jour des totaux dans les onglets
+            collectionCountSpan.textContent = collectionTotal;
+            tradeListCountSpan.textContent = tradeTotal;
+            wantListCountSpan.textContent = wantTotal;
+        };
+
+        await getAllCardData(accessToken);
+
+        loadingMessageDiv.style.display = "none";
+        mainDiv.style.display = "block";
+
+    } catch (error) {
+        //console.error(error.message);
+        loadingMessageDiv.style.display = "none";
+        mainDiv.style.display = "none";
+        errorMessageDiv.style.display = "flex";
+        errorMessageDiv.textContent = error.message;
+    }
 });
