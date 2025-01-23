@@ -21,7 +21,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     const copyWantListButton = document.getElementById("copyWantListButton");
     const copyTradeListButton = document.getElementById("copyTradeListButton");
     const copyCollectionCSVButton = document.getElementById("copyCollectionCSVButton");
-
+	
     // Fonction utilitaire pour copier le contenu d'un textarea
     const copyToClipboard = (textarea) => {
         textarea.select();
@@ -60,6 +60,14 @@ document.addEventListener("DOMContentLoaded", async () => {
         if (!currentTabDomain.endsWith("altered.gg")) {
             throw new Error("Err02 : Please go to https://altered.gg and login into your account !");
         }
+		
+		// Récupération de la langue du site à partir de l'URL de l'onglet actif
+		const language = (() => {
+			const url = new URL(tabs[0].url);
+			const path = url.pathname.split('/');
+			const locale = path[1];
+			return locale && /^[a-z]{2}-[a-z]{2}$/.test(locale) ? locale : 'en';
+		})();
 
         // Injection de script pour récupérer le contenu HTML de la page
         const [response] = await browser.scripting.executeScript({
@@ -80,8 +88,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         // Fonction pour récupérer les statistiques de la collection de cartes
         const fetchCardDataStats = async (accessToken, page) => {
-            const itemsPerPage = 50; // Vous pouvez ajuster cela en fonction de votre besoin
-            const language = 'en';  // Vous pouvez ajuster la langue si nécessaire
+            const itemsPerPage = 36;
             const response = await fetch(`https://api.altered.gg/cards/stats?collection=true&itemsPerPage=${itemsPerPage}&page=${page}&locale=${language}`, {
                 headers: {
                     'Accept-Language': language,
@@ -99,8 +106,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 
         // Fonction pour récupérer les cartes de la collection de l'utilisateur
         const fetchCardDataCards = async (accessToken, page) => {
-            const itemsPerPage = 50; // Nombre d'éléments par page
-            const language = 'en';  // Langue à utiliser pour l'API
+            const itemsPerPage = 36;
             const response = await fetch(`https://api.altered.gg/cards?collection=true&itemsPerPage=${itemsPerPage}&page=${page}&locale=${language}`, {
                 headers: {
                     'Accept-Language': language,
