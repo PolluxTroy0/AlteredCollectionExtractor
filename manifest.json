@@ -1,12 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Altered - Collection Extractor",
-  "version": "2.4",
-  "description": "Extract you cards collection from Altered TCG website, using the official API, in the following format: Quantity ID.",
-  "permissions": [
-    "activeTab",
-    "scripting"
-  ],
+  "version": "3.1",
+  "description": "Extract your cards collection from Altered TCG website, using the official API, in the following format: Quantity ID.",
   "action": {
     "default_popup": "popup.html",
     "default_icon": {
@@ -15,14 +11,23 @@
       "128": "icon.png"
     }
   },
-  "background": {
-    "service_worker": "background.js"
+  "permissions": [
+    "scripting",
+    "activeTab",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://*.altered.gg/*"
+  ],
+  "icons": {
+    "16": "icon.png",
+    "48": "icon.png",
+    "128": "icon.png"
   },
-  "content_scripts": [
-    {
-      "matches": ["https://www.altered.gg/*"],
-      "js": ["popup.js"],
-      "run_at": "document_end"
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "{df474bb2-92a7-470e-8194-ce02948aa945}",
+      "strict_min_version": "109.0"
     }
-  ]
+  }
 }
