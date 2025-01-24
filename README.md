@@ -11,7 +11,9 @@ You can export :
 - Trade List
 - Collection CSV (Tab Separrated)
 
-You can download it here : https://chromewebstore.google.com/detail/altered-collection-extrac/oilacpbjlailfffkpmpklcgipomnfpom
+You can download it here for Chrome : https://chromewebstore.google.com/detail/altered-collection-extrac/oilacpbjlailfffkpmpklcgipomnfpom
+
+You can download it here for Firefox : http://addons.mozilla.org/en-US/firefox/addon/altered-collection-extractor/
 
 WARNING: This extension uses sensitive data. Do not use it if you do not trust the source.
 I disclaim all responsibility for any issues or misuse that may arise from using this extension.
