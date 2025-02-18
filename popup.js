@@ -123,65 +123,74 @@ document.addEventListener("DOMContentLoaded", async () => {
 		};
 
         // Fonction pour extraire les liens et les détails
-        const extractLinks = (statsData, cardsData) => {
-            const statsMembers = statsData?.['hydra:member'];
-            const cardsMembers = cardsData?.['hydra:member'];
-            if (!statsMembers || !cardsMembers) throw new Error('Err08 - Invalid data format !');
+		const extractLinks = (statsData, cardsData) => {
+			const statsMembers = statsData?.['hydra:member'];
+			const cardsMembers = cardsData?.['hydra:member'];
+			if (!statsMembers || !cardsMembers) throw new Error('Err08 - Invalid data format !');
 
-            const collectionLinks = [];
-            const detailedCollectionLinks = [];
-            const tradeListLinks = [];
-            const wantListLinks = [];
-            let collectionCount = 0;
-            let tradeCount = 0;
-            let wantCount = 0;
+			const collectionLinks = [];
+			const detailedCollectionLinks = [];
+			const tradeListLinks = [];
+			const wantListLinks = [];
+			let collectionCount = 0;
+			let tradeCount = 0;
+			let wantCount = 0;
 
-            statsMembers.forEach((statCard) => {
-                const reference = `${statCard.reference}`;
-                const cardDetails = cardsMembers.find(card => card.reference === statCard.reference);
+			statsMembers.forEach((statCard) => {
+				// Extraction de la référence à partir de "@id"
+				const reference = statCard["@id"].split('/').pop();
 
-                // In Collection (Stats)
-                if (statCard.inMyCollection > 0) {
-                    collectionLinks.push(`${statCard.inMyCollection} ${reference}`);
-                    collectionCount += statCard.inMyCollection;
-                }
+				// In Collection (Stats)
+				if (statCard.inMyCollection > 0) {
+					collectionLinks.push(`${statCard.inMyCollection} ${reference}`);
+					collectionCount += statCard.inMyCollection;
+				}
 
-                // In Collection (Cards CSV)
-                if (statCard.inMyCollection > 0 && cardDetails) {
-                    const rarityName = cardDetails.rarity?.name || '?';
-                    const factionName = cardDetails.mainFaction?.name || '?';
-                    const cardName = cardDetails.name || '?';
-                    const cardType = cardDetails.cardType?.name || '?';
-                    const cardSet = reference.split('_')[1];
+				// In Collection (Cards CSV)
+				if (statCard.inMyCollection > 0) {
+					// On recherche les détails correspondants dans cardsMembers
+					const cardDetails = cardsMembers.find(card => {
+						if (!card["@id"]) return false;
+						const ref = card["@id"].split('/').pop();
+						return ref === reference;
+					});
+					if (cardDetails) {
+						const rarityName = cardDetails.rarity?.name || '?';
+						const factionName = cardDetails.mainFaction?.name || '?';
+						const cardName = cardDetails.name || '?';
+						const cardType = cardDetails.cardType?.name || '?';
+						const cardSet = reference.split('_')[1];
 
-                    detailedCollectionLinks.push(
-                        `${factionName}\t${rarityName}\t${cardType}\t${cardSet}\t${statCard.inMyCollection}\t${cardName}`
-                    );
-                }
+						detailedCollectionLinks.push(
+							`${factionName}\t${rarityName}\t${cardType}\t${cardSet}\t${statCard.inMyCollection}\t${cardName}`
+						);
+					}
+				}
 
-                // In Want List (Stats)
-                if (statCard.inMyWantlist) {
-                    wantListLinks.push(`1 ${reference}`);
-                    wantCount += 1;
-                }
+				// In Want List (Stats)
+				// La propriété inMyWantlist est désormais un booléen
+				if (statCard.inMyWantlist === true) {
+					wantListLinks.push(`1 ${reference}`);
+					wantCount += 1;
+				}
 
-                // In Trade List (Stats)
-                if (statCard.inMyTradelist > 0) {
-                    tradeListLinks.push(`${statCard.inMyTradelist} ${reference}`);
-                    tradeCount += statCard.inMyTradelist;
-                }
-            });
+				// In Trade List (Stats)
+				if (statCard.inMyTradelist > 0) {
+					tradeListLinks.push(`${statCard.inMyTradelist} ${reference}`);
+					tradeCount += statCard.inMyTradelist;
+				}
+			});
 
-            return {
-                collectionLinks,
-                detailedCollectionLinks,
-                tradeListLinks,
-                wantListLinks,
-                collectionCount,
-                tradeCount,
-                wantCount
-            };
-        };
+			return {
+				collectionLinks,
+				detailedCollectionLinks,
+				tradeListLinks,
+				wantListLinks,
+				collectionCount,
+				tradeCount,
+				wantCount
+			};
+		};
 		
 		// Liste des sets à traiter
 		const cardSets = ['CORE', 'COREKS', 'ALIZE'];
