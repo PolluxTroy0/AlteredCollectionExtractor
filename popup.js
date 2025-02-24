@@ -1,4 +1,5 @@
 document.addEventListener("DOMContentLoaded", async () => {
+	
     // Compatibilité Chrome & Firefox
     const browser = window.browser || window.chrome;
 
@@ -25,7 +26,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Fonction utilitaire pour copier le contenu d'un textarea
     const copyToClipboard = (textarea) => {
         textarea.select();
-        textarea.setSelectionRange(0, textarea.value.length); // Pour s'assurer que tout le contenu est sélectionné
+        textarea.setSelectionRange(0, textarea.value.length);
         document.execCommand("copy");
     };
 
@@ -123,7 +124,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 		};
 
         // Fonction pour extraire les liens et les détails
-		const extractLinks = (statsData, cardsData) => {
+		const extractLinks = (statsData, cardsData, code) => {
 			const statsMembers = statsData?.['hydra:member'];
 			const cardsMembers = cardsData?.['hydra:member'];
 			if (!statsMembers || !cardsMembers) throw new Error('Err08 - Invalid data format !');
@@ -137,7 +138,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 			let wantCount = 0;
 
 			statsMembers.forEach((statCard) => {
-				// Extraction de la référence à partir de "@id"
 				const reference = statCard["@id"].split('/').pop();
 
 				// In Collection (Stats)
@@ -148,7 +148,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 				// In Collection (Cards CSV)
 				if (statCard.inMyCollection > 0) {
-					// On recherche les détails correspondants dans cardsMembers
 					const cardDetails = cardsMembers.find(card => {
 						if (!card["@id"]) return false;
 						const ref = card["@id"].split('/').pop();
@@ -159,7 +158,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 						const factionName = cardDetails.mainFaction?.name || '?';
 						const cardName = cardDetails.name || '?';
 						const cardType = cardDetails.cardType?.name || '?';
-						const cardSet = reference.split('_')[1];
+						const cardSet = code;
 
 						detailedCollectionLinks.push(
 							`${factionName}\t${rarityName}\t${cardType}\t${cardSet}\t${statCard.inMyCollection}\t${cardName}`
@@ -168,7 +167,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 				}
 
 				// In Want List (Stats)
-				// La propriété inMyWantlist est désormais un booléen
 				if (statCard.inMyWantlist === true) {
 					wantListLinks.push(`1 ${reference}`);
 					wantCount += 1;
@@ -192,8 +190,29 @@ document.addEventListener("DOMContentLoaded", async () => {
 			};
 		};
 		
-		// Liste des sets à traiter
-		const cardSets = ['CORE', 'COREKS', 'ALIZE'];
+		// Fonction pour extraire les sets à traiter
+		const fetchCardSets = async () => {
+			try {
+				const response = await fetch('https://api.altered.gg/card_sets?locale=en-us');
+				const data = await response.json();
+
+				if (data && data['hydra:member']) {
+					const cardSets = data['hydra:member']
+						.filter(set => set.code !== null)
+						.map(set => {
+							if (set.reference === 'COREKS') {
+								set.code = 'BTGKS';
+							}
+							return { reference: set.reference, code: set.code };
+						});
+					return cardSets;
+				} else {
+					throw new Error('Err09 : Invalid data received !');
+				}
+			} catch (error) {
+				throw new Error('Err10 : Invalid API response ! Please reload the page and try again.');
+			}
+		};
 
 		// Fonction principale pour récupérer toutes les données des cartes pour chaque set
 		const getAllCardData = async (accessToken) => {
@@ -208,15 +227,18 @@ document.addEventListener("DOMContentLoaded", async () => {
 			let tradeTotal = 0;
 			let wantTotal = 0;
 
+			// Récupérer les sets à traiter avec leur référence et code
+			const cardSets = await fetchCardSets();
+
 			// Fonction pour récupérer les données pour un set spécifique
-			const fetchCardDataForSet = async (setName) => {
-				const initialStatsData = await fetchCardDataStatsForSet(accessToken, 1, setName);
+			const fetchCardDataForSet = async (reference, code) => {
+				const initialStatsData = await fetchCardDataStatsForSet(accessToken, 1, reference);
 				const totalPages = Math.ceil((initialStatsData['hydra:totalItems'] || 0) / 36);
 				return totalPages;
 			};
 
 			// Calculer le total des pages pour tous les sets avant de commencer
-			const totalPagesForAllSets = await Promise.all(cardSets.map(setName => fetchCardDataForSet(setName)));
+			const totalPagesForAllSets = await Promise.all(cardSets.map(set => fetchCardDataForSet(set.reference, set.code)));
 			const totalPages = totalPagesForAllSets.reduce((acc, pages) => acc + pages, 0);
 			const totalRequests = totalPages * 2; // Chaque page nécessite 2 requêtes : stats + cartes
 			let completedRequests = 0;
@@ -228,13 +250,13 @@ document.addEventListener("DOMContentLoaded", async () => {
 			};
 
 			// Fonction pour créer une tâche pour une page
-			const fetchPageData = async (page, setName) => {
+			const fetchPageData = async (page, reference, code) => {
 				const [statsData, cardsData] = await Promise.all([
-					fetchCardDataStatsForSet(accessToken, page, setName),
-					fetchCardDataCardsForSet(accessToken, page, setName)
+					fetchCardDataStatsForSet(accessToken, page, reference),
+					fetchCardDataCardsForSet(accessToken, page, reference)
 				]);
 
-				const links = extractLinks(statsData, cardsData);
+				const links = extractLinks(statsData, cardsData, code);
 
 				allLinks.collection.push(...links.collectionLinks);
 				allLinks.trade.push(...links.tradeListLinks);
@@ -251,7 +273,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 			};
 
 			// Fonction pour exécuter les requêtes en parallèle avec une limite
-			const fetchInBatches = async (startPage, endPage, setName, batchSize) => {
+			const fetchInBatches = async (startPage, endPage, reference, code, batchSize) => {
 				const pages = [];
 				for (let page = startPage; page <= endPage; page++) {
 					pages.push(page);
@@ -259,15 +281,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 				while (pages.length > 0) {
 					const batch = pages.splice(0, batchSize); // Extraire les pages pour ce lot
-					await Promise.all(batch.map(page => fetchPageData(page, setName))); // Effectuer les requêtes du lot
+					await Promise.all(batch.map(page => fetchPageData(page, reference, code))); // Effectuer les requêtes du lot
 				}
 			};
 
 			// Boucle pour récupérer les données pour chaque set
-			for (const setName of cardSets) {
-				const initialStatsData = await fetchCardDataStatsForSet(accessToken, 1, setName);
+			for (const set of cardSets) {
+				const initialStatsData = await fetchCardDataStatsForSet(accessToken, 1, set.reference);
 				const totalPagesForSet = Math.ceil((initialStatsData['hydra:totalItems'] || 0) / 36);
-				await fetchInBatches(1, totalPagesForSet, setName, 5);
+				await fetchInBatches(1, totalPagesForSet, set.reference, set.code, 5);
 			}
 
 			// Mise à jour des textareas
