@@ -260,67 +260,66 @@ document.addEventListener("DOMContentLoaded", async () => {
 			let collectionTotal = 0;
 			let tradeTotal = 0;
 			let wantTotal = 0;
-			let completedRequests = 0; // Initialisation du compteur des requêtes complétées
+			let completedRequests = 0;
 
-			// Récupérer les sets à traiter avec leur référence et code
 			const cardSets = await fetchCardSets();
 
-			// Fonction pour récupérer les données pour un set spécifique
-			const fetchCardDataForSet = async (reference, code) => {
-				const initialStatsData = await fetchCardDataStatsForSet(accessToken, 1, reference);
+			// Fonction pour calculer le total des pages et les requêtes pour un type spécifique
+			const fetchCardDataForSet = async (accessToken, reference, code, isWantlist = false) => {
+				const fetchStats = isWantlist ? fetchCardDataStatsForSetWantList : fetchCardDataStatsForSet;
+				const initialStatsData = await fetchStats(accessToken, 1, reference);
 				const totalPages = Math.ceil((initialStatsData['hydra:totalItems'] || 0) / 36);
 				return totalPages;
 			};
 
 			// Calculer le total des pages pour tous les sets avant de commencer
-			const totalPagesForAllSets = await Promise.all(cardSets.map(set => fetchCardDataForSet(set.reference, set.code)));
+			const totalPagesForAllSets = await Promise.all(
+				cardSets.map(set => fetchCardDataForSet(accessToken, set.reference, set.code))
+			);
 			const totalPages = totalPagesForAllSets.reduce((acc, pages) => acc + pages, 0);
 			const totalRequests = totalPages * 2; // Chaque page nécessite 2 requêtes : stats + cartes
 
-			// Fonction pour récupérer les données de la Wantlist
-			const fetchWantlistDataForSet = async (reference, code) => {
-				const initialStatsData = await fetchCardDataStatsForSetWantList(accessToken, 1, reference);
-				const totalPages = Math.ceil((initialStatsData['hydra:totalItems'] || 0) / 36);
-				return totalPages;
-			};
-
-			// Calculer le total des pages pour la Wantlist avant de commencer
-			const totalPagesForWantlist = await Promise.all(cardSets.map(set => fetchWantlistDataForSet(set.reference, set.code)));
+			// Calcul pour la Wantlist
+			const totalPagesForWantlist = await Promise.all(
+				cardSets.map(set => fetchCardDataForSet(accessToken, set.reference, set.code, true))
+			);
 			const totalPagesWantlist = totalPagesForWantlist.reduce((acc, pages) => acc + pages, 0);
 			const totalRequestsWantlist = totalPagesWantlist * 2; // Chaque page nécessite 2 requêtes pour la wantlist
 
 			// Fonction pour gérer la progression globale
 			const updateGlobalProgress = () => {
-				const totalGlobalRequests = totalRequests + totalRequestsWantlist; // Total des requêtes collection/trade + wantlist
+				const totalGlobalRequests = totalRequests + totalRequestsWantlist;
 				const progressPercent = Math.round((completedRequests / totalGlobalRequests) * 100);
 				updateLoadingMessage(progressPercent);
 			};
 
-			// Fonction pour créer une tâche pour une page
-			const fetchPageData = async (page, reference, code) => {
+			// Fonction générique pour récupérer les pages de données
+			const fetchPageData = async (accessToken, page, reference, code, isWantlist = false) => {
+				const fetchStats = isWantlist ? fetchCardDataStatsForSetWantList : fetchCardDataStatsForSet;
 				const [statsData, cardsData] = await Promise.all([
-					fetchCardDataStatsForSet(accessToken, page, reference),
+					fetchStats(accessToken, page, reference),
 					fetchCardDataCardsForSet(accessToken, page, reference)
 				]);
 
 				const links = extractLinks(statsData, cardsData, code);
 
-				allLinks.collection.push(...links.collectionLinks);
-				allLinks.trade.push(...links.tradeListLinks);
-				//allLinks.want.push(...links.wantListLinks);
-				allLinks.detailedCollection.push(...links.detailedCollectionLinks);
+				if (!isWantlist) {
+					allLinks.collection.push(...links.collectionLinks);
+					allLinks.trade.push(...links.tradeListLinks);
+					allLinks.detailedCollection.push(...links.detailedCollectionLinks);
+					collectionTotal += links.collectionCount;
+					tradeTotal += links.tradeCount;
+				} else {
+					allLinks.want.push(...links.wantListLinks);
+					wantTotal += links.wantCount;
+				}
 
-				collectionTotal += links.collectionCount;
-				tradeTotal += links.tradeCount;
-				//wantTotal += links.wantCount;
-
-				// Mettre à jour les requêtes terminées et la progression
 				completedRequests += 2; // Une page correspond à 2 requêtes
 				updateGlobalProgress();
 			};
 
-			// Fonction pour exécuter les requêtes en parallèle avec une limite
-			const fetchInBatches = async (startPage, endPage, reference, code, batchSize) => {
+			// Fonction pour exécuter les requêtes en parallèle avec une limite pour n'importe quel type de données
+			const fetchInBatches = async (accessToken, startPage, endPage, reference, code, batchSize, isWantlist = false) => {
 				const pages = [];
 				for (let page = startPage; page <= endPage; page++) {
 					pages.push(page);
@@ -328,52 +327,22 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 				while (pages.length > 0) {
 					const batch = pages.splice(0, batchSize); // Extraire les pages pour ce lot
-					await Promise.all(batch.map(page => fetchPageData(page, reference, code))); // Effectuer les requêtes du lot
+					await Promise.all(batch.map(page => fetchPageData(accessToken, page, reference, code, isWantlist))); // Effectuer les requêtes du lot
 				}
 			};
 
-			// Boucle pour récupérer les données pour chaque set (Collection + Trade)
+			// Boucle pour récupérer les données pour la collection et trade (et wantlist séparément)
 			for (const set of cardSets) {
 				const initialStatsData = await fetchCardDataStatsForSet(accessToken, 1, set.reference);
 				const totalPagesForSet = Math.ceil((initialStatsData['hydra:totalItems'] || 0) / 36);
-				await fetchInBatches(1, totalPagesForSet, set.reference, set.code, 5);
+				await fetchInBatches(accessToken, 1, totalPagesForSet, set.reference, set.code, 5);
 			}
-
-			// Fonction pour créer une tâche pour une page de la Wantlist
-			const fetchWantlistPageData = async (page, reference, code) => {
-				const [statsData, cardsData] = await Promise.all([
-					fetchCardDataStatsForSetWantList(accessToken, page, reference),
-					fetchCardDataCardsForSet(accessToken, page, reference)
-				]);
-
-				const links = extractLinks(statsData, cardsData, code);
-
-				allLinks.want.push(...links.wantListLinks);
-				wantTotal += links.wantCount;
-
-				// Mettre à jour les requêtes terminées et la progression
-				completedRequests += 2; // Une page correspond à 2 requêtes
-				updateGlobalProgress();
-			};
-
-			// Fonction pour exécuter les requêtes en parallèle pour la Wantlist avec une limite
-			const fetchWantlistInBatches = async (startPage, endPage, reference, code, batchSize) => {
-				const pages = [];
-				for (let page = startPage; page <= endPage; page++) {
-					pages.push(page);
-				}
-
-				while (pages.length > 0) {
-					const batch = pages.splice(0, batchSize); // Extraire les pages pour ce lot
-					await Promise.all(batch.map(page => fetchWantlistPageData(page, reference, code))); // Effectuer les requêtes du lot
-				}
-			};
 
 			// Boucle pour récupérer les données pour la Wantlist
 			for (const set of cardSets) {
 				const initialStatsData = await fetchCardDataStatsForSetWantList(accessToken, 1, set.reference);
 				const totalPagesForSetWantlist = Math.ceil((initialStatsData['hydra:totalItems'] || 0) / 36);
-				await fetchWantlistInBatches(1, totalPagesForSetWantlist, set.reference, set.code, 5);
+				await fetchInBatches(accessToken, 1, totalPagesForSetWantlist, set.reference, set.code, 5, true);
 			}
 
 			// Mise à jour des textareas
