@@ -52,7 +52,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         // Vérification du domaine de l'onglet actif
         const tabs = await browser.tabs.query({ active: true, currentWindow: true });
         if (tabs.length === 0 || !tabs[0].url) {
-            throw new Error("Err01 : Unable to get the active tab !");
+            throw new Error("Err01 : Unable to retrieve URL ! Please reload the page and try again.");
         }
 
         const currentTabDomain = new URL(tabs[0].url).hostname;
@@ -95,12 +95,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 					'Authorization': `Bearer ${accessToken}`,
 				},
 			});
-			if (!response.ok) throw new Error(`Err04 : Invalid response : ${response.statusText}`);
+			if (!response.ok) throw new Error('Err04 : Invalid API response ! Please reload the page and try again.');
 			const rawText = await response.text();
 			try {
 				return JSON.parse(rawText);
 			} catch {
-				throw new Error(`Err05 : Invalid JSON : ${rawText}`);
+				throw new Error('Err05 : Invalid data received !');
 			}
 		};
 
@@ -113,12 +113,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 					'Authorization': `Bearer ${accessToken}`,
 				},
 			});
-			if (!response.ok) throw new Error(`Err06 : Invalid response : ${response.statusText}`);
+			if (!response.ok) throw new Error('Err06 : Invalid API response ! Please reload the page and try again.');
 			const rawText = await response.text();
 			try {
 				return JSON.parse(rawText);
 			} catch {
-				throw new Error(`Err07 : Invalid JSON : ${rawText}`);
+				throw new Error('Err07 : Invalid data received !');
 			}
 		};
 
