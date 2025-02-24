@@ -40,8 +40,8 @@
 			width: 100%;
 			padding: 10px;
 			font-size: 16px;
-			background-color: #007bff;
-			color: white;
+			background-color: #d4af37;
+			color: #49423a;
 			border: none;
 			border-radius: 5px;
 			cursor: pointer;
@@ -50,7 +50,7 @@
 		}
 
 		button:hover {
-			background-color: #0056b3;
+			background-color: #eec74b;
 		}
 
 		#loadingMessage,
@@ -64,10 +64,11 @@
 			padding: 10px;
 			border-radius: 5px;
 			box-sizing: border-box;
+			color: #49423a;
 		}
-
-		#loadingMessage {
-			color: #007bff;
+		
+		progress {
+			accent-color: #d4af37;
 		}
 
 		#errorMessage {
@@ -98,8 +99,9 @@
 		}
 
 		.tab-frame input:checked + label {
-			background: #007bff;
-			color: white;
+			border-radius: 5px;
+			background: #d4af37;
+			color: #49423a;
 			cursor: default;
 		}
 
@@ -127,6 +129,7 @@
 	
 	<!-- Loading message div -->
 	<div id="loadingMessage">
+		<br/><br/><br/><br/>
 		Loading...
 	</div>
 	
@@ -147,28 +150,28 @@
 		<div class="tab">
 			<textarea id="collectionTextarea" readonly></textarea>
 			<div class="button-container">
-				<button id="copyCollectionButton">Copy Collection to Clipboard</button>
+				<button id="copyCollectionButton"><b>Copy Collection to Clipboard</b></button>
 			</div>
 		</div>
 
 		<div class="tab">
 			<textarea id="tradeListTextarea" readonly></textarea>
 			<div class="button-container">
-				<button id="copyTradeListButton">Copy Trade List to Clipboard</button>
+				<button id="copyTradeListButton"><b>Copy Trade List to Clipboard</b></button>
 			</div>
 		</div>
 
 		<div class="tab">
 			<textarea id="wantListTextarea" readonly></textarea>
 			<div class="button-container">
-				<button id="copyWantListButton">Copy Want List to Clipboard</button>
+				<button id="copyWantListButton"><b>Copy Want List to Clipboard</b></button>
 			</div>
 		</div>
 
 		<div class="tab">
 			<textarea id="collectionCSVTextarea" readonly></textarea>
 			<div class="button-container">
-				<button id="copyCollectionCSVButton">Copy Collection CSV to Clipboard</button>
+				<button id="copyCollectionCSVButton"><b>Copy Collection CSV to Clipboard</b></button>
 			</div>
 		</div>
 	</div>

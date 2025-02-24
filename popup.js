@@ -39,15 +39,18 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Affiche le message de chargement au départ
     errorMessageDiv.style.display = "none";
     mainDiv.style.display = "none";
-    loadingMessageDiv.style.display = "flex";
+    loadingMessageDiv.style.display = "block";
     
-    const updateLoadingMessage = (progress) => {
-        loadingMessageDiv.innerHTML = `
-            Retrieving cards collection, please wait...<br>
-            Do not close this window or leave your browser!<br><br>
-            Progress: ${progress}%
-        `;
-    };
+	const updateLoadingMessage = (progress) => {
+		loadingMessageDiv.innerHTML = `
+			<br/><br/>
+			Retrieving cards collection, please wait...<br>
+			Do not close this window or leave your browser !<br><br>
+			<progress value="${progress}" max="100" style="width: 100%;"></progress><br/>
+			Progress: ${progress}%
+			
+		`;
+	};
 
     try {
         // Vérification du domaine de l'onglet actif
@@ -69,7 +72,8 @@ document.addEventListener("DOMContentLoaded", async () => {
 			const locale = path[1];
 			return locale && /^[a-z]{2}-[a-z]{2}$/.test(locale) ? locale : 'en';
 		})();
-
+		
+		/*
         // Injection de script pour récupérer le contenu HTML de la page
         const [response] = await browser.scripting.executeScript({
             target: { tabId: tabs[0].id },
@@ -86,6 +90,37 @@ document.addEventListener("DOMContentLoaded", async () => {
         };
 
         const accessToken = getAccessToken();
+		*/
+		
+		// Fonction pour récupérer le token d'accès à partir de l'API
+		const getAccessTokenFromAPI = async () => {
+			try {
+				const response = await fetch("https://www.altered.gg/api/auth/session", {
+					method: "GET",
+					headers: {
+						"Content-Type": "application/json",
+					},
+				});
+
+				if (!response.ok) {
+					throw new Error('Err03 : Invalid API response ! Please reload the page and try again.');
+				}
+
+				const data = await response.json();
+				
+				if (!data.accessToken) {
+					throw new Error("Err04 : Please login into your account !");
+				}
+
+				return data.accessToken;
+			} catch (error) {
+				console.error(error);
+				throw error;
+			}
+		};
+
+		// Récupération du token
+		const accessToken = await getAccessTokenFromAPI();
 
         // Fonction pour récupérer les statistiques de la collection de cartes
 		const fetchCardDataStatsForSet = async (accessToken, page, setName) => {
@@ -96,12 +131,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 					'Authorization': `Bearer ${accessToken}`,
 				},
 			});
-			if (!response.ok) throw new Error('Err04 : Invalid API response ! Please reload the page and try again.');
+			if (!response.ok) throw new Error('Err05 : Invalid API response ! Please reload the page and try again.');
 			const rawText = await response.text();
 			try {
 				return JSON.parse(rawText);
 			} catch {
-				throw new Error('Err05 : Invalid data received !');
+				throw new Error('Err06 : Invalid data received !');
 			}
 		};
 
@@ -114,12 +149,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 					'Authorization': `Bearer ${accessToken}`,
 				},
 			});
-			if (!response.ok) throw new Error('Err06 : Invalid API response ! Please reload the page and try again.');
+			if (!response.ok) throw new Error('Err07 : Invalid API response ! Please reload the page and try again.');
 			const rawText = await response.text();
 			try {
 				return JSON.parse(rawText);
 			} catch {
-				throw new Error('Err07 : Invalid data received !');
+				throw new Error('Err08 : Invalid data received !');
 			}
 		};
 
@@ -127,7 +162,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 		const extractLinks = (statsData, cardsData, code) => {
 			const statsMembers = statsData?.['hydra:member'];
 			const cardsMembers = cardsData?.['hydra:member'];
-			if (!statsMembers || !cardsMembers) throw new Error('Err08 - Invalid data format !');
+			if (!statsMembers || !cardsMembers) throw new Error('Err09 - Invalid data format !');
 
 			const collectionLinks = [];
 			const detailedCollectionLinks = [];
@@ -207,10 +242,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 						});
 					return cardSets;
 				} else {
-					throw new Error('Err09 : Invalid data received !');
+					throw new Error('Err10 : Invalid data received !');
 				}
 			} catch (error) {
-				throw new Error('Err10 : Invalid API response ! Please reload the page and try again.');
+				throw new Error('Err11 : Invalid API response ! Please reload the page and try again.');
 			}
 		};
 
