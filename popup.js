@@ -73,25 +73,6 @@ document.addEventListener("DOMContentLoaded", async () => {
 			return locale && /^[a-z]{2}-[a-z]{2}$/.test(locale) ? locale : 'en';
 		})();
 		
-		/*
-        // Injection de script pour récupérer le contenu HTML de la page
-        const [response] = await browser.scripting.executeScript({
-            target: { tabId: tabs[0].id },
-            func: () => document.documentElement.innerHTML,
-        });
-
-        const pageHTML = response.result;
-
-        // Vérification de la connexion utilisateur avec getAccessToken
-        const getAccessToken = () => {
-            const tokenMatch = pageHTML.match(/"accessToken":"(.*?)"/);
-            if (!tokenMatch) throw new Error("Err03 : Please login into your account !");
-            return tokenMatch[1];
-        };
-
-        const accessToken = getAccessToken();
-		*/
-		
 		// Fonction pour récupérer le token d'accès à partir de l'API
 		const getAccessTokenFromAPI = async () => {
 			try {
@@ -139,11 +120,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 				throw new Error('Err06 : Invalid data received !');
 			}
 		};
-
-		// Fonction modifiée pour inclure le paramètre cardSet[] dans la requête
-		const fetchCardDataCardsForSet = async (accessToken, page, setName) => {
+		
+        // Fonction pour récupérer les statistiques de la wantlist de cartes
+		const fetchCardDataStatsForSetWantList = async (accessToken, page, setName) => {
 			const itemsPerPage = 36;
-			const response = await fetch(`https://api.altered.gg/cards?collection=true&itemsPerPage=${itemsPerPage}&page=${page}&locale=${language}&cardSet[]=${setName}`, {
+			const response = await fetch(`https://api.altered.gg/cards/stats?cardList.name=wantlist&itemsPerPage=${itemsPerPage}&page=${page}&locale=${language}&cardSet[]=${setName}`, {
 				headers: {
 					'Accept-Language': language,
 					'Authorization': `Bearer ${accessToken}`,
@@ -158,11 +139,29 @@ document.addEventListener("DOMContentLoaded", async () => {
 			}
 		};
 
+		// Fonction modifiée pour inclure le paramètre cardSet[] dans la requête
+		const fetchCardDataCardsForSet = async (accessToken, page, setName) => {
+			const itemsPerPage = 36;
+			const response = await fetch(`https://api.altered.gg/cards?collection=true&itemsPerPage=${itemsPerPage}&page=${page}&locale=${language}&cardSet[]=${setName}`, {
+				headers: {
+					'Accept-Language': language,
+					'Authorization': `Bearer ${accessToken}`,
+				},
+			});
+			if (!response.ok) throw new Error('Err09 : Invalid API response ! Please reload the page and try again.');
+			const rawText = await response.text();
+			try {
+				return JSON.parse(rawText);
+			} catch {
+				throw new Error('Err10 : Invalid data received !');
+			}
+		};
+		
         // Fonction pour extraire les liens et les détails
 		const extractLinks = (statsData, cardsData, code) => {
 			const statsMembers = statsData?.['hydra:member'];
 			const cardsMembers = cardsData?.['hydra:member'];
-			if (!statsMembers || !cardsMembers) throw new Error('Err09 - Invalid data format !');
+			if (!statsMembers || !cardsMembers) throw new Error('Err11 - Invalid data format !');
 
 			const collectionLinks = [];
 			const detailedCollectionLinks = [];
@@ -242,10 +241,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 						});
 					return cardSets;
 				} else {
-					throw new Error('Err10 : Invalid data received !');
+					throw new Error('Err12 : Invalid data received !');
 				}
 			} catch (error) {
-				throw new Error('Err11 : Invalid API response ! Please reload the page and try again.');
+				throw new Error('Err13 : Invalid API response ! Please reload the page and try again.');
 			}
 		};
 
@@ -261,6 +260,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 			let collectionTotal = 0;
 			let tradeTotal = 0;
 			let wantTotal = 0;
+			let completedRequests = 0; // Initialisation du compteur des requêtes complétées
 
 			// Récupérer les sets à traiter avec leur référence et code
 			const cardSets = await fetchCardSets();
@@ -276,11 +276,23 @@ document.addEventListener("DOMContentLoaded", async () => {
 			const totalPagesForAllSets = await Promise.all(cardSets.map(set => fetchCardDataForSet(set.reference, set.code)));
 			const totalPages = totalPagesForAllSets.reduce((acc, pages) => acc + pages, 0);
 			const totalRequests = totalPages * 2; // Chaque page nécessite 2 requêtes : stats + cartes
-			let completedRequests = 0;
+
+			// Fonction pour récupérer les données de la Wantlist
+			const fetchWantlistDataForSet = async (reference, code) => {
+				const initialStatsData = await fetchCardDataStatsForSetWantList(accessToken, 1, reference);
+				const totalPages = Math.ceil((initialStatsData['hydra:totalItems'] || 0) / 36);
+				return totalPages;
+			};
+
+			// Calculer le total des pages pour la Wantlist avant de commencer
+			const totalPagesForWantlist = await Promise.all(cardSets.map(set => fetchWantlistDataForSet(set.reference, set.code)));
+			const totalPagesWantlist = totalPagesForWantlist.reduce((acc, pages) => acc + pages, 0);
+			const totalRequestsWantlist = totalPagesWantlist * 2; // Chaque page nécessite 2 requêtes pour la wantlist
 
 			// Fonction pour gérer la progression globale
 			const updateGlobalProgress = () => {
-				const progressPercent = Math.round((completedRequests / totalRequests) * 100);
+				const totalGlobalRequests = totalRequests + totalRequestsWantlist; // Total des requêtes collection/trade + wantlist
+				const progressPercent = Math.round((completedRequests / totalGlobalRequests) * 100);
 				updateLoadingMessage(progressPercent);
 			};
 
@@ -295,12 +307,12 @@ document.addEventListener("DOMContentLoaded", async () => {
 
 				allLinks.collection.push(...links.collectionLinks);
 				allLinks.trade.push(...links.tradeListLinks);
-				allLinks.want.push(...links.wantListLinks);
+				//allLinks.want.push(...links.wantListLinks);
 				allLinks.detailedCollection.push(...links.detailedCollectionLinks);
 
 				collectionTotal += links.collectionCount;
 				tradeTotal += links.tradeCount;
-				wantTotal += links.wantCount;
+				//wantTotal += links.wantCount;
 
 				// Mettre à jour les requêtes terminées et la progression
 				completedRequests += 2; // Une page correspond à 2 requêtes
@@ -320,11 +332,48 @@ document.addEventListener("DOMContentLoaded", async () => {
 				}
 			};
 
-			// Boucle pour récupérer les données pour chaque set
+			// Boucle pour récupérer les données pour chaque set (Collection + Trade)
 			for (const set of cardSets) {
 				const initialStatsData = await fetchCardDataStatsForSet(accessToken, 1, set.reference);
 				const totalPagesForSet = Math.ceil((initialStatsData['hydra:totalItems'] || 0) / 36);
 				await fetchInBatches(1, totalPagesForSet, set.reference, set.code, 5);
+			}
+
+			// Fonction pour créer une tâche pour une page de la Wantlist
+			const fetchWantlistPageData = async (page, reference, code) => {
+				const [statsData, cardsData] = await Promise.all([
+					fetchCardDataStatsForSetWantList(accessToken, page, reference),
+					fetchCardDataCardsForSet(accessToken, page, reference)
+				]);
+
+				const links = extractLinks(statsData, cardsData, code);
+
+				allLinks.want.push(...links.wantListLinks);
+				wantTotal += links.wantCount;
+
+				// Mettre à jour les requêtes terminées et la progression
+				completedRequests += 2; // Une page correspond à 2 requêtes
+				updateGlobalProgress();
+			};
+
+			// Fonction pour exécuter les requêtes en parallèle pour la Wantlist avec une limite
+			const fetchWantlistInBatches = async (startPage, endPage, reference, code, batchSize) => {
+				const pages = [];
+				for (let page = startPage; page <= endPage; page++) {
+					pages.push(page);
+				}
+
+				while (pages.length > 0) {
+					const batch = pages.splice(0, batchSize); // Extraire les pages pour ce lot
+					await Promise.all(batch.map(page => fetchWantlistPageData(page, reference, code))); // Effectuer les requêtes du lot
+				}
+			};
+
+			// Boucle pour récupérer les données pour la Wantlist
+			for (const set of cardSets) {
+				const initialStatsData = await fetchCardDataStatsForSetWantList(accessToken, 1, set.reference);
+				const totalPagesForSetWantlist = Math.ceil((initialStatsData['hydra:totalItems'] || 0) / 36);
+				await fetchWantlistInBatches(1, totalPagesForSetWantlist, set.reference, set.code, 5);
 			}
 
 			// Mise à jour des textareas
