@@ -317,6 +317,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 				completedRequests += 2; // Une page correspond à 2 requêtes
 				updateGlobalProgress();
 			};
+			
+			// Fonction d'attente
+			const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
 			// Fonction pour exécuter les requêtes en parallèle avec une limite pour n'importe quel type de données
 			const fetchInBatches = async (accessToken, startPage, endPage, reference, code, batchSize, isWantlist = false) => {
@@ -328,6 +331,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 				while (pages.length > 0) {
 					const batch = pages.splice(0, batchSize); // Extraire les pages pour ce lot
 					await Promise.all(batch.map(page => fetchPageData(accessToken, page, reference, code, isWantlist))); // Effectuer les requêtes du lot
+					await sleep(1000); // 💤 Attendre 2 secondes entre les lots
 				}
 			};
 
@@ -335,14 +339,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 			for (const set of cardSets) {
 				const initialStatsData = await fetchCardDataStatsForSet(accessToken, 1, set.reference);
 				const totalPagesForSet = Math.ceil((initialStatsData['hydra:totalItems'] || 0) / 36);
-				await fetchInBatches(accessToken, 1, totalPagesForSet, set.reference, set.code, 5);
+				await fetchInBatches(accessToken, 1, totalPagesForSet, set.reference, set.code, 1);
 			}
 
 			// Boucle pour récupérer les données pour la Wantlist
 			for (const set of cardSets) {
 				const initialStatsData = await fetchCardDataStatsForSetWantList(accessToken, 1, set.reference);
 				const totalPagesForSetWantlist = Math.ceil((initialStatsData['hydra:totalItems'] || 0) / 36);
-				await fetchInBatches(accessToken, 1, totalPagesForSetWantlist, set.reference, set.code, 5, true);
+				await fetchInBatches(accessToken, 1, totalPagesForSetWantlist, set.reference, set.code, 1, true);
 			}
 
 			// Mise à jour des textareas
@@ -350,11 +354,25 @@ document.addEventListener("DOMContentLoaded", async () => {
 			wantListTextarea.value = allLinks.want.join('\n');
 			tradeListTextarea.value = allLinks.trade.join('\n');
 			collectionCSVTextarea.value = allLinks.detailedCollection.join('\n');
-
+			
 			// Mise à jour des totaux dans les onglets
 			collectionCountSpan.textContent = collectionTotal;
 			tradeListCountSpan.textContent = tradeTotal;
 			wantListCountSpan.textContent = wantTotal;
+			
+			// Add promo/events non owned cards (Add tokens ?)
+			const promoCardIDs = [
+				//Kuraokami
+				'3 ALT_ALIZE_P_OR_48_C',
+				'3 ALT_ALIZE_P_OR_48_R1',
+				'3 ALT_ALIZE_P_OR_48_R2'
+			];
+			promoCardIDs.forEach(id => {
+				allLinks.collection.push(id);
+			});
+			collectionTextarea.value = allLinks.collection.join('\n');
+			collectionCountSpan.textContent = collectionTotal + 33;
+			
 		};
 
         await getAllCardData(accessToken);
