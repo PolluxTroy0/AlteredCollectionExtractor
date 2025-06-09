@@ -78,6 +78,31 @@
 		#main {
 			display: none;
 		}
+		
+		#choiceButtons {
+		  margin-bottom: 20px;
+		  text-align: center;
+		}
+
+		#choiceButtons h3 {
+		  margin-bottom: 12px;
+		  font-weight: normal;
+		  font-size: 1.2em;
+		}
+
+		/* Conteneur boutons en flex */
+		#buttonsContainer {
+		  display: flex;
+		  justify-content: center;
+		  gap: 15px;
+		}
+
+		/* Style des boutons */
+		#buttonsContainer button {
+		  padding: 10px 20px;
+		  font-size: 16px;
+		  cursor: pointer;
+		}
 
 		footer {
 			margin-top: 20px;
@@ -120,66 +145,79 @@
 	</style>
 </head>
 <body>
-	<h1>Altered - Collection Extractor</h1>
-	
-	<!-- Error message div -->
-	<div id="errorMessage">
-		Err00 : An error occurred !
-	</div>
-	
-	<!-- Loading message div -->
-	<div id="loadingMessage">
-		<br/><br/><br/><br/>
-		Loading...
-	</div>
-	
-	<!-- Main content area -->
-	<div id="main" class="tab-frame">
-		<input type="radio" checked name="tab" id="tab1">
-		<label for="tab1">Collection (<span id="collectioncount">0</span>)</label>
+  <h1>Altered - Collection Extractor</h1>
+  
+  <!-- Error message div -->
+  <div id="errorMessage" style="display:none; color:red;">
+    Err00 : An error occurred !
+  </div>
+  
+  <!-- Loading message div -->
+  <div id="loadingMessage" style="display:none;">
+    <br/><br/><br/><br/>
+    Loading...
+  </div>
+  
+  <!-- Boutons de choix avant le contenu principal -->
+  <div id="choiceButtons">
+    <br/><br/>
+	<h3>What do you want to extract ?</h3>
+	  <div id="buttonsContainer">
+		<button id="btnComplete"><b>Full Collection</b></button>
+		<button id="btnUniques"><b>Uniques Only</b></button>
+	  </div>
+	<br/><br/>
+	<i>Note: Due to Equinox's strict API rate limits, extracting your collection may be slower than before.</i>
+	<br/><br/>
+  </div>
 
-		<input type="radio" name="tab" id="tab2">
-		<label for="tab2">Trade List (<span id="tradelistcount">0</span>)</label>
+  <!-- Main content area -->
+  <div id="main" class="tab-frame" style="display:none;">
+    <input type="radio" checked name="tab" id="tab1">
+    <label for="tab1">Collection (<span id="collectioncount">0</span>)</label>
 
-		<input type="radio" name="tab" id="tab3">
-		<label for="tab3">Want List (<span id="wantlistcount">0</span>)</label>
+    <input type="radio" name="tab" id="tab2">
+    <label for="tab2">Trade List (<span id="tradelistcount">0</span>)</label>
 
-		<input type="radio" name="tab" id="tab4">
-		<label for="tab4">Collection (CSV)</label>
+    <input type="radio" name="tab" id="tab3">
+    <label for="tab3">Want List (<span id="wantlistcount">0</span>)</label>
 
-		<div class="tab">
-			<textarea id="collectionTextarea" readonly></textarea>
-			<div class="button-container">
-				<button id="copyCollectionButton"><b>Copy Collection to Clipboard</b></button>
-			</div>
-		</div>
+    <input type="radio" name="tab" id="tab4">
+    <label for="tab4">Collection (CSV)</label>
 
-		<div class="tab">
-			<textarea id="tradeListTextarea" readonly></textarea>
-			<div class="button-container">
-				<button id="copyTradeListButton"><b>Copy Trade List to Clipboard</b></button>
-			</div>
-		</div>
+    <div class="tab">
+      <textarea id="collectionTextarea" readonly></textarea>
+      <div class="button-container">
+        <button id="copyCollectionButton"><b>Copy Collection to Clipboard</b></button>
+      </div>
+    </div>
 
-		<div class="tab">
-			<textarea id="wantListTextarea" readonly></textarea>
-			<div class="button-container">
-				<button id="copyWantListButton"><b>Copy Want List to Clipboard</b></button>
-			</div>
-		</div>
+    <div class="tab">
+      <textarea id="tradeListTextarea" readonly></textarea>
+      <div class="button-container">
+        <button id="copyTradeListButton"><b>Copy Trade List to Clipboard</b></button>
+      </div>
+    </div>
 
-		<div class="tab">
-			<textarea id="collectionCSVTextarea" readonly></textarea>
-			<div class="button-container">
-				<button id="copyCollectionCSVButton"><b>Copy Collection CSV to Clipboard</b></button>
-			</div>
-		</div>
-	</div>
-	
-	<footer>
-		This browser extension is not affiliated with Altered !<br>
-		It was created by/for <a href="https://altered-db.com" target="_blank">Altered-DB</a>.
-	</footer>
-	<script src="popup.js"></script>
+    <div class="tab">
+      <textarea id="wantListTextarea" readonly></textarea>
+      <div class="button-container">
+        <button id="copyWantListButton"><b>Copy Want List to Clipboard</b></button>
+      </div>
+    </div>
+
+    <div class="tab">
+      <textarea id="collectionCSVTextarea" readonly></textarea>
+      <div class="button-container">
+        <button id="copyCollectionCSVButton"><b>Copy Collection CSV to Clipboard</b></button>
+      </div>
+    </div>
+  </div>
+  
+  <footer>
+    This browser extension is not affiliated with Altered !<br>
+    It was created by/for <a href="https://altered-db.com" target="_blank">Altered-DB</a>.
+  </footer>
+  <script src="popup.js"></script>
 </body>
 </html>
