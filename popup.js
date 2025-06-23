@@ -23,6 +23,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     const copyTradeListButton = document.getElementById("copyTradeListButton");
     const copyCollectionCSVButton = document.getElementById("copyCollectionCSVButton");
 	
+	// Sélection du menu déroulant pour le set
+	const select = document.getElementById("setSelect");
+	
     // Fonction utilitaire pour copier le contenu d'un textarea
     const copyToClipboard = (textarea) => {
         textarea.select();
@@ -55,6 +58,62 @@ document.addEventListener("DOMContentLoaded", async () => {
 			
 		`;
 	};
+	
+	// Remplir le select des sets
+	const setToDownload = document.getElementById("setSelect");
+	setToDownload.querySelectorAll("option:not([value='ALL'])").forEach(opt => opt.remove());
+	const excludedCodes = ['WCS25', 'TEST'];
+
+	try {
+		const response = await fetch("https://api.altered.gg/card_sets?locale=en-us");
+		const data = await response.json();
+
+		if (data?.['hydra:member']?.length) {
+			const sets = data['hydra:member']
+				.filter(set =>
+					set.reference &&
+					set.name &&
+					set.code &&
+					!excludedCodes.includes(set.code)
+				)
+				.reverse() // Inverse l’ordre d’origine de l’API
+				.map(set => ({
+					value: set.reference,
+					label: set.name,
+					code: set.code
+				}));
+
+			sets.forEach(set => {
+				const option = document.createElement("option");
+				option.value = set.value; // set.reference
+				option.textContent = set.label; // set.name
+				option.setAttribute("data-code", set.code); // set.code comme data-code
+				setToDownload.appendChild(option);
+			});
+		} else {
+			console.warn("No sets found in API response.");
+		}
+	} catch (err) {
+		console.error("Error fetching card sets:", err);
+	}
+	
+	// Changer le bouton en fonction du select
+	setToDownload.addEventListener("change", function () {
+		const selectedOption = setToDownload.options[setToDownload.selectedIndex];
+		const code = selectedOption.dataset.code;
+		const value = selectedOption.value;
+
+		if (value === "ALL") {
+			btnComplete.innerHTML = "<b>Full Collection</b>";
+			btnUniques.innerHTML = "<b>Uniques Only</b>";
+		} else if (value === "COREKS") {
+			btnComplete.innerHTML = `<b>${code} KS Collection</b>`;
+			btnUniques.innerHTML = `<b>${code} KS Uniques Only</b>`;
+		} else {
+			btnComplete.innerHTML = `<b>${code} Collection</b>`;
+			btnUniques.innerHTML = `<b>${code} Uniques Only</b>`;
+		}
+	});
 
 	// Fonction pour récupérer les statistiques de la collection de cartes
 	const fetchCardDataStatsForSet = async (accessToken, page, setName) => {
@@ -200,14 +259,23 @@ document.addEventListener("DOMContentLoaded", async () => {
 			const data = await response.json();
 
 			if (data && data['hydra:member']) {
-				const cardSets = data['hydra:member']
+				let cardSets = data['hydra:member']
 					.filter(set => set.code !== null)
 					.map(set => {
+						// Correction de code spécifique
 						if (set.reference === 'COREKS') {
 							set.code = 'BTGKS';
 						}
 						return { reference: set.reference, code: set.code };
 					});
+
+				// Vérifie la sélection utilisateur
+				const selectedSet = setToDownload.value;
+
+				if (selectedSet !== 'ALL') {
+					cardSets = cardSets.filter(set => set.reference === selectedSet);
+				}
+
 				return cardSets;
 			} else {
 				throw new Error('Err12 : Invalid data received !');
@@ -330,6 +398,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 		wantListCountSpan.textContent = wantTotal;
 		
 		if (useUniques === 0) {
+			/*
 			// Add promo/events non owned cards (Add tokens ?), seulement si collection globale
 			const promoCardIDs = [
 				'3 ALT_ALIZE_P_OR_48_C',
@@ -349,7 +418,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 			collectionCountSpan.textContent = collectionTotal + 9;
 			wantListCountSpan.textContent = wantTotal;
 			tradeListCountSpan.textContent = tradeTotal;
-
+			*/
 		} else {
 			// Fonction utilitaire pour filtrer les lignes contenant '_FOILER_' et calculer combien enlever
 			const filterFoilers = (list) => {
