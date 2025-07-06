@@ -62,7 +62,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 	// Remplir le select des sets
 	const setToDownload = document.getElementById("setSelect");
 	setToDownload.querySelectorAll("option:not([value='ALL'])").forEach(opt => opt.remove());
-	const excludedCodes = ['WCS25', 'TEST'];
+	const excludedCodes = ['WCS25', 'TEST', 'WCQ25'];
 
 	try {
 		const response = await fetch("https://api.altered.gg/card_sets?locale=en-us");
