@@ -1,53 +1,56 @@
 document.addEventListener("DOMContentLoaded", async () => {
+
+	// Chrome & Firefox compatibility
+	// Firefox Manifest v3 does not support service workers for now.
+	const browser = window.browser || window.chrome;
+
+	// Divs
+	const errorMessageDiv = document.getElementById("errorMessage");
+	const loadingMessageDiv = document.getElementById("loadingMessage");
+	const mainDiv = document.getElementById("main");
 	
-    // Compatibilité Chrome & Firefox
-    const browser = window.browser || window.chrome;
+	// Textareas
+	const collectionTextarea = document.getElementById("collectionTextarea");
+	const wantListTextarea = document.getElementById("wantListTextarea");
+	const tradeListTextarea = document.getElementById("tradeListTextarea");
+	const collectionCSVTextarea = document.getElementById("collectionCSVTextarea");
 
-    // Sélection des divs et textareas
-    const errorMessageDiv = document.getElementById("errorMessage");
-    const loadingMessageDiv = document.getElementById("loadingMessage");
-    const mainDiv = document.getElementById("main");
-    const collectionTextarea = document.getElementById("collectionTextarea");
-    const wantListTextarea = document.getElementById("wantListTextarea");
-    const tradeListTextarea = document.getElementById("tradeListTextarea");
-    const collectionCSVTextarea = document.getElementById("collectionCSVTextarea");
+	// Counters
+	const collectionCountSpan = document.getElementById("collectioncount");
+	const tradeListCountSpan = document.getElementById("tradelistcount");
+	const wantListCountSpan = document.getElementById("wantlistcount");
 
-    // Sélection des compteurs pour mise à jour
-    const collectionCountSpan = document.getElementById("collectioncount");
-    const tradeListCountSpan = document.getElementById("tradelistcount");
-    const wantListCountSpan = document.getElementById("wantlistcount");
+	// Buttons
+	const copyCollectionButton = document.getElementById("copyCollectionButton");
+	const copyWantListButton = document.getElementById("copyWantListButton");
+	const copyTradeListButton = document.getElementById("copyTradeListButton");
+	const copyCollectionCSVButton = document.getElementById("copyCollectionCSVButton");
 
-    // Sélection des boutons de copie
-    const copyCollectionButton = document.getElementById("copyCollectionButton");
-    const copyWantListButton = document.getElementById("copyWantListButton");
-    const copyTradeListButton = document.getElementById("copyTradeListButton");
-    const copyCollectionCSVButton = document.getElementById("copyCollectionCSVButton");
-	
-	// Sélection du menu déroulant pour le set
+	// Selects
 	const select = document.getElementById("setSelect");
-	
-    // Fonction utilitaire pour copier le contenu d'un textarea
-    const copyToClipboard = (textarea) => {
-        textarea.select();
-        textarea.setSelectionRange(0, textarea.value.length);
-        document.execCommand("copy");
-    };
 
-    // Écouteurs sur les boutons de copie
-    copyCollectionButton.addEventListener("click", () => copyToClipboard(collectionTextarea));
-    copyWantListButton.addEventListener("click", () => copyToClipboard(wantListTextarea));
-    copyTradeListButton.addEventListener("click", () => copyToClipboard(tradeListTextarea));
-    copyCollectionCSVButton.addEventListener("click", () => copyToClipboard(collectionCSVTextarea));
-	
-	// Variables globales
+	// Utility function to copy the contents of a textarea
+	const copyToClipboard = (textarea) => {
+		textarea.select();
+		textarea.setSelectionRange(0, textarea.value.length);
+		document.execCommand("copy");
+	};
+
+	// Listeners on the copy buttons
+	copyCollectionButton.addEventListener("click", () => copyToClipboard(collectionTextarea));
+	copyWantListButton.addEventListener("click", () => copyToClipboard(wantListTextarea));
+	copyTradeListButton.addEventListener("click", () => copyToClipboard(tradeListTextarea));
+	copyCollectionCSVButton.addEventListener("click", () => copyToClipboard(collectionCSVTextarea));
+
+	// Global variables
 	let useUniques = 0;
 	let language = "en-us";
 
-    // Affiche le message de chargement au départ
-    errorMessageDiv.style.display = "none";
-    mainDiv.style.display = "none";
-    loadingMessageDiv.style.display = "none";
-    
+	// Display the loading message at the start
+	errorMessageDiv.style.display = "none";
+	mainDiv.style.display = "none";
+	loadingMessageDiv.style.display = "none";
+
 	const updateLoadingMessage = (progress) => {
 		loadingMessageDiv.innerHTML = `
 			<br/><br/>
@@ -58,36 +61,65 @@ document.addEventListener("DOMContentLoaded", async () => {
 			
 		`;
 	};
-	
-	// Remplir le select des sets
+
+	// Function to communicate with the service worker
+	const fetchViaWorker = (url, options = {}) => {
+		return new Promise((resolve, reject) => {
+			chrome.runtime.sendMessage({
+					type: "fetch",
+					url,
+					options,
+				},
+				(response) => {
+					if (chrome.runtime.lastError) {
+						reject(new Error(chrome.runtime.lastError.message));
+						return;
+					}
+					if (!response.ok) {
+						reject(new Error(`HTTP error! Status: ${response.status}`));
+						return;
+					}
+					resolve(response.text);
+				}
+			);
+		});
+	};
+
+	// Populate the set select
 	const setToDownload = document.getElementById("setSelect");
 	setToDownload.querySelectorAll("option:not([value='ALL'])").forEach(opt => opt.remove());
 	const excludedCodes = ['WCS25', 'TEST', 'WCQ25'];
 
 	try {
-		const response = await fetch("https://api.altered.gg/card_sets?locale=en-us");
-		const data = await response.json();
+		const rawText = await fetchViaWorker("https://api.altered.gg/card_sets?locale=en-us");
+		const data = JSON.parse(rawText);
 
 		if (data?.['hydra:member']?.length) {
-			const sets = data['hydra:member']
+			allCardSets = data['hydra:member']
 				.filter(set =>
 					set.reference &&
 					set.name &&
 					set.code &&
 					!excludedCodes.includes(set.code)
 				)
-				.reverse() // Inverse l’ordre d’origine de l’API
-				.map(set => ({
-					value: set.reference,
-					label: set.name,
-					code: set.code
-				}));
+				.map(set => {
+					// Fix for the COREKS set
+					if (set.reference === 'COREKS') {
+						set.code = 'BTGKS';
+					}
+					return {
+						reference: set.reference,
+						code: set.code,
+						name: set.name
+					};
+				})
+				.reverse(); // Revers sets order
 
-			sets.forEach(set => {
+			allCardSets.forEach(set => {
 				const option = document.createElement("option");
-				option.value = set.value; // set.reference
-				option.textContent = set.label; // set.name
-				option.setAttribute("data-code", set.code); // set.code comme data-code
+				option.value = set.reference;
+				option.textContent = set.name;
+				option.setAttribute("data-code", set.code);
 				setToDownload.appendChild(option);
 			});
 		} else {
@@ -96,9 +128,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 	} catch (err) {
 		console.error("Error fetching card sets:", err);
 	}
-	
-	// Changer le bouton en fonction du select
-	setToDownload.addEventListener("change", function () {
+
+	// Change the button based on the select
+	setToDownload.addEventListener("change", function() {
 		const selectedOption = setToDownload.options[setToDownload.selectedIndex];
 		const code = selectedOption.dataset.code;
 		const value = selectedOption.value;
@@ -115,46 +147,45 @@ document.addEventListener("DOMContentLoaded", async () => {
 		}
 	});
 
-	// Fonction pour récupérer les statistiques de la collection de cartes
+	// Function to fetch the card collection statistics
 	const fetchCardDataStatsForSet = async (accessToken, page, setName) => {
 		const itemsPerPage = 36;
-		
 		let url = `https://api.altered.gg/cards/stats?collection=true&itemsPerPage=${itemsPerPage}&page=${page}&locale=${language}&cardSet[]=${setName}`;
 		if (useUniques) {
-		  url += `&rarity[]=UNIQUE`;
+			url += `&rarity[]=UNIQUE`;
 		}
 
-		const response = await fetch(url, {
-		  headers: {
-			'Accept-Language': language,
-			'Authorization': `Bearer ${accessToken}`,
-		  },
+		const rawText = await fetchViaWorker(url, {
+			method: "GET",
+			headers: {
+				'Accept-Language': language,
+				'Authorization': `Bearer ${accessToken}`,
+			},
 		});
-		if (!response.ok) throw new Error('Err05 : Invalid API response ! Please reload the page and try again.');
-		const rawText = await response.text();
+
 		try {
 			return JSON.parse(rawText);
 		} catch {
 			throw new Error('Err06 : Invalid data received !');
 		}
 	};
-	
-	// Fonction pour récupérer les statistiques de la wantlist de cartes
+
+	// Function to fetch the card wantlist statistics
 	const fetchCardDataStatsForSetWantList = async (accessToken, page, setName) => {
 		const itemsPerPage = 36;
-		
 		let url = `https://api.altered.gg/cards/stats?cardList.name=wantlist&itemsPerPage=${itemsPerPage}&page=${page}&locale=${language}&cardSet[]=${setName}`;
 		if (useUniques) {
-		  url += `&rarity[]=UNIQUE`;
+			url += `&rarity[]=UNIQUE`;
 		}
-		const response = await fetch(url, {
+
+		const rawText = await fetchViaWorker(url, {
+			method: "GET",
 			headers: {
 				'Accept-Language': language,
 				'Authorization': `Bearer ${accessToken}`,
 			},
 		});
-		if (!response.ok) throw new Error('Err07 : Invalid API response ! Please reload the page and try again.');
-		const rawText = await response.text();
+
 		try {
 			return JSON.parse(rawText);
 		} catch {
@@ -162,30 +193,30 @@ document.addEventListener("DOMContentLoaded", async () => {
 		}
 	};
 
-	// Fonction modifiée pour inclure le paramètre cardSet[] dans la requête
+	// Function to fetch the cards from the collection
 	const fetchCardDataCardsForSet = async (accessToken, page, setName) => {
 		const itemsPerPage = 36;
-		
 		let url = `https://api.altered.gg/cards?collection=true&itemsPerPage=${itemsPerPage}&page=${page}&locale=${language}&cardSet[]=${setName}`;
 		if (useUniques) {
-		  url += `&rarity[]=UNIQUE`;
+			url += `&rarity[]=UNIQUE`;
 		}
-		const response = await fetch(url, {
+
+		const rawText = await fetchViaWorker(url, {
+			method: "GET",
 			headers: {
 				'Accept-Language': language,
 				'Authorization': `Bearer ${accessToken}`,
 			},
 		});
-		if (!response.ok) throw new Error('Err09 : Invalid API response ! Please reload the page and try again.');
-		const rawText = await response.text();
+
 		try {
 			return JSON.parse(rawText);
 		} catch {
 			throw new Error('Err10 : Invalid data received !');
 		}
 	};
-	
-	// Fonction pour extraire les liens et les détails
+
+	// Function to extract links and details
 	const extractLinks = (statsData, cardsData, code) => {
 		const statsMembers = statsData?.['hydra:member'];
 		const cardsMembers = cardsData?.['hydra:member'];
@@ -251,41 +282,26 @@ document.addEventListener("DOMContentLoaded", async () => {
 			wantCount
 		};
 	};
-	
-	// Fonction pour extraire les sets à traiter
+
+	// Function to extract sets to process (from sets list at load time)
 	const fetchCardSets = async () => {
-		try {
-			const response = await fetch('https://api.altered.gg/card_sets?locale=en-us');
-			const data = await response.json();
-
-			if (data && data['hydra:member']) {
-				let cardSets = data['hydra:member']
-					.filter(set => set.code !== null)
-					.map(set => {
-						// Correction de code spécifique
-						if (set.reference === 'COREKS') {
-							set.code = 'BTGKS';
-						}
-						return { reference: set.reference, code: set.code };
-					});
-
-				// Vérifie la sélection utilisateur
-				const selectedSet = setToDownload.value;
-
-				if (selectedSet !== 'ALL') {
-					cardSets = cardSets.filter(set => set.reference === selectedSet);
-				}
-
-				return cardSets;
-			} else {
-				throw new Error('Err12 : Invalid data received !');
-			}
-		} catch (error) {
-			throw new Error('Err13 : Invalid API response ! Please reload the page and try again.');
+		if (!allCardSets.length) {
+			throw new Error("Err12 : No sets loaded ! Please reload the extension.");
 		}
+
+		let cardSets = [...allCardSets];
+
+		// Verify user select value
+		const selectedSet = setToDownload.value;
+
+		if (selectedSet !== 'ALL') {
+			cardSets = cardSets.filter(set => set.reference === selectedSet);
+		}
+
+		return cardSets;
 	};
 
-	// Fonction principale pour récupérer toutes les données des cartes pour chaque set
+	// Main function to fetch all card data for each set
 	const getAllCardData = async (accessToken) => {
 		const allLinks = {
 			collection: [],
@@ -299,44 +315,89 @@ document.addEventListener("DOMContentLoaded", async () => {
 		let wantTotal = 0;
 		let completedRequests = 0;
 
+		// Rate limiter (2 requests/second)
+		const createRateLimiter = (maxRequestsPerSecond) => {
+			let queue = [];
+			let activeCount = 0;
+
+			const processQueue = () => {
+				if (queue.length === 0) {
+					activeCount = 0;
+					return;
+				}
+				while (activeCount < maxRequestsPerSecond && queue.length > 0) {
+					const {
+						fn,
+						resolve,
+						reject
+					} = queue.shift();
+					activeCount++;
+					fn()
+						.then(resolve)
+						.catch(reject)
+						.finally(() => {
+							activeCount--;
+							// Waiting for 1.25 seconds for the api rate limit
+							setTimeout(processQueue, 1250);
+						});
+				}
+			};
+
+			const schedule = (fn) => {
+				return new Promise((resolve, reject) => {
+					queue.push({
+						fn,
+						resolve,
+						reject
+					});
+					processQueue();
+				});
+			};
+
+			return schedule;
+		};
+
+		const schedule = createRateLimiter(2); // 2 requests (per second)
+
 		const cardSets = await fetchCardSets();
 
-		// Fonction pour calculer le total des pages et les requêtes pour un type spécifique
+		// Function to calculate the total number of pages for a given set
 		const fetchCardDataForSet = async (accessToken, reference, code, isWantlist = false) => {
 			const fetchStats = isWantlist ? fetchCardDataStatsForSetWantList : fetchCardDataStatsForSet;
-			const initialStatsData = await fetchStats(accessToken, 1, reference);
+			const initialStatsData = await schedule(() => fetchStats(accessToken, 1, reference));
 			const totalPages = Math.ceil((initialStatsData['hydra:totalItems'] || 0) / 36);
 			return totalPages;
 		};
 
-		// Calculer le total des pages pour tous les sets avant de commencer
+		// Calculate total pages for all sets (collection + wantlist)
 		const totalPagesForAllSets = await Promise.all(
 			cardSets.map(set => fetchCardDataForSet(accessToken, set.reference, set.code))
 		);
 		const totalPages = totalPagesForAllSets.reduce((acc, pages) => acc + pages, 0);
-		const totalRequests = totalPages * 2; // Chaque page nécessite 2 requêtes : stats + cartes
+		const totalRequests = totalPages * 2;
 
-		// Calcul pour la Wantlist
 		const totalPagesForWantlist = await Promise.all(
 			cardSets.map(set => fetchCardDataForSet(accessToken, set.reference, set.code, true))
 		);
 		const totalPagesWantlist = totalPagesForWantlist.reduce((acc, pages) => acc + pages, 0);
-		const totalRequestsWantlist = totalPagesWantlist * 2; // Chaque page nécessite 2 requêtes pour la wantlist
+		const totalRequestsWantlist = totalPagesWantlist * 2;
 
-		// Fonction pour gérer la progression globale
+		// Progression update
 		const updateGlobalProgress = () => {
 			const totalGlobalRequests = totalRequests + totalRequestsWantlist;
 			const progressPercent = Math.round((completedRequests / totalGlobalRequests) * 100);
 			updateLoadingMessage(progressPercent);
 		};
 
-		// Fonction générique pour récupérer les pages de données
+		// Function to fetch data of a page (stats + cards), going through the rate limiter
 		const fetchPageData = async (accessToken, page, reference, code, isWantlist = false) => {
 			const fetchStats = isWantlist ? fetchCardDataStatsForSetWantList : fetchCardDataStatsForSet;
-			const [statsData, cardsData] = await Promise.all([
-				fetchStats(accessToken, page, reference),
-				fetchCardDataCardsForSet(accessToken, page, reference)
-			]);
+
+			// Schedule the 2 requests via the rate limiter
+			const statsPromise = schedule(() => fetchStats(accessToken, page, reference));
+			const cardsPromise = schedule(() => fetchCardDataCardsForSet(accessToken, page, reference));
+
+			const [statsData, cardsData] = await Promise.all([statsPromise, cardsPromise]);
 
 			const links = extractLinks(statsData, cardsData, code);
 
@@ -351,55 +412,39 @@ document.addEventListener("DOMContentLoaded", async () => {
 				wantTotal += links.wantCount;
 			}
 
-			completedRequests += 2; // Une page correspond à 2 requêtes
+			completedRequests += 2;
 			updateGlobalProgress();
 		};
-		
-		// Fonction d'attente
-		const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-		// Fonction pour exécuter les requêtes en parallèle avec une limite pour n'importe quel type de données
-		const fetchInBatches = async (accessToken, startPage, endPage, reference, code, batchSize, isWantlist = false) => {
-			const pages = [];
-			for (let page = startPage; page <= endPage; page++) {
-				pages.push(page);
-			}
-
-			while (pages.length > 0) {
-				const batch = pages.splice(0, batchSize); // Extraire les pages pour ce lot
-				await Promise.all(batch.map(page => fetchPageData(accessToken, page, reference, code, isWantlist))); // Effectuer les requêtes du lot
-				await sleep(1000); // 💤 Attendre 2 secondes entre les lots
-			}
-		};
-
-		// Boucle pour récupérer les données pour la collection et trade (et wantlist séparément)
+		// Loop over each set page by page sequentially (no batching or sleeping needed)
 		for (const set of cardSets) {
-			const initialStatsData = await fetchCardDataStatsForSet(accessToken, 1, set.reference);
-			const totalPagesForSet = Math.ceil((initialStatsData['hydra:totalItems'] || 0) / 36);
-			await fetchInBatches(accessToken, 1, totalPagesForSet, set.reference, set.code, 1);
+			const totalPagesForSet = await fetchCardDataForSet(accessToken, set.reference, set.code);
+			for (let page = 1; page <= totalPagesForSet; page++) {
+				await fetchPageData(accessToken, page, set.reference, set.code);
+			}
 		}
 
-		// Boucle pour récupérer les données pour la Wantlist
 		for (const set of cardSets) {
-			const initialStatsData = await fetchCardDataStatsForSetWantList(accessToken, 1, set.reference);
-			const totalPagesForSetWantlist = Math.ceil((initialStatsData['hydra:totalItems'] || 0) / 36);
-			await fetchInBatches(accessToken, 1, totalPagesForSetWantlist, set.reference, set.code, 1, true);
+			const totalPagesForSetWantlist = await fetchCardDataForSet(accessToken, set.reference, set.code, true);
+			for (let page = 1; page <= totalPagesForSetWantlist; page++) {
+				await fetchPageData(accessToken, page, set.reference, set.code, true);
+			}
 		}
 
-		// Mise à jour des textareas
+		// Updating the textareas
 		collectionTextarea.value = allLinks.collection.join('\n');
 		wantListTextarea.value = allLinks.want.join('\n');
 		tradeListTextarea.value = allLinks.trade.join('\n');
 		collectionCSVTextarea.value = allLinks.detailedCollection.join('\n');
-		
-		// Mise à jour des totaux dans les onglets
+
+		// Updating the totals
 		collectionCountSpan.textContent = collectionTotal;
 		tradeListCountSpan.textContent = tradeTotal;
 		wantListCountSpan.textContent = wantTotal;
-		
+
 		if (useUniques === 0) {
 			/*
-			// Add promo/events non owned cards (Add tokens ?), seulement si collection globale
+			// Add promo/events non owned cards (Add tokens ?), only for global collection
 			const promoCardIDs = [
 				'3 ALT_ALIZE_P_OR_48_C',
 				'3 ALT_ALIZE_P_OR_48_R1',
@@ -409,65 +454,63 @@ document.addEventListener("DOMContentLoaded", async () => {
 				allLinks.collection.push(id);
 			});
 
-			// Mise à jour des textareas et compteurs
+			// Updating the textareas and totals
 			collectionTextarea.value = allLinks.collection.join('\n');
 			wantListTextarea.value = allLinks.want.join('\n');
 			tradeListTextarea.value = allLinks.trade.join('\n');
 			collectionCSVTextarea.value = allLinks.detailedCollection.join('\n');
-
 			collectionCountSpan.textContent = collectionTotal + 9;
 			wantListCountSpan.textContent = wantTotal;
 			tradeListCountSpan.textContent = tradeTotal;
 			*/
 		} else {
-			// Fonction utilitaire pour filtrer les lignes contenant '_FOILER_' et calculer combien enlever
+			// Filtering lines with 'FOILER' or 'Foiler'
 			const filterFoilers = (list) => {
 				let newList = [];
 				let removed = 0;
 				list.forEach(line => {
 					if (line.includes('_FOILER_') || line.includes('Foiler')) {
 						const match = line.match(/^(\d+)\s/);
-						if (match) {
-							removed += parseInt(match[1], 10);
-						}
+						if (match) removed += parseInt(match[1], 10);
 					} else {
 						newList.push(line);
 					}
 				});
-				return { newList, removed };
+				return {
+					newList,
+					removed
+				};
 			};
 
-			// Appliquer à chaque liste
 			const filteredCollection = filterFoilers(allLinks.collection);
 			const filteredWant = filterFoilers(allLinks.want);
 			const filteredTrade = filterFoilers(allLinks.trade);
-			const filteredDetailed = filterFoilers(allLinks.detailedCollection); // même si les quantités ne comptent pas ici
+			const filteredDetailed = filterFoilers(allLinks.detailedCollection);
 
-			// Mettre à jour les tableaux
 			allLinks.collection = filteredCollection.newList;
 			allLinks.want = filteredWant.newList;
 			allLinks.trade = filteredTrade.newList;
 			allLinks.detailedCollection = filteredDetailed.newList;
 
-			// Mise à jour des textareas
 			collectionTextarea.value = allLinks.collection.join('\n');
 			wantListTextarea.value = allLinks.want.join('\n');
 			tradeListTextarea.value = allLinks.trade.join('\n');
 			collectionCSVTextarea.value = allLinks.detailedCollection.join('\n');
 
-			// Mise à jour des compteurs
 			collectionCountSpan.textContent = collectionTotal - filteredCollection.removed;
 			wantListCountSpan.textContent = wantTotal - filteredWant.removed;
 			tradeListCountSpan.textContent = tradeTotal - filteredTrade.removed;
 		}
-		
 	};
 
 	async function fetchCollection(useUniques) {
 		try {
-			
-			// Vérification du domaine de l'onglet actif
-			const tabs = await browser.tabs.query({ active: true, currentWindow: true });
+
+			// Checking the domain of the active tab
+			const tabs = await browser.tabs.query({
+				active: true,
+				currentWindow: true
+			});
 			if (tabs.length === 0 || !tabs[0].url) {
 				throw new Error("Err01 : Unable to retrieve URL ! Please reload the page and try again.");
 			}
@@ -477,31 +520,27 @@ document.addEventListener("DOMContentLoaded", async () => {
 			if (!currentTabDomain.endsWith("altered.gg")) {
 				throw new Error("Err02 : Please go to https://altered.gg and login into your account !");
 			}
-			
-			// Récupération de la langue du site à partir de l'URL de l'onglet actif
+
+			// Retrieving the site language from the active tab’s URL
 			language = (() => {
 				const url = new URL(tabs[0].url);
 				const path = url.pathname.split('/');
 				const locale = path[1];
 				return locale && /^[a-z]{2}-[a-z]{2}$/.test(locale) ? locale : 'en';
 			})();
-			
-			// Fonction pour récupérer le token d'accès à partir de l'API
+
+			// Function to retrieve the access token from the API
 			const getAccessTokenFromAPI = async () => {
 				try {
-					const response = await fetch("https://www.altered.gg/api/auth/session", {
+					const rawText = await fetchViaWorker("https://www.altered.gg/api/auth/session", {
 						method: "GET",
 						headers: {
 							"Content-Type": "application/json",
 						},
 					});
 
-					if (!response.ok) {
-						throw new Error('Err03 : Invalid API response ! Please reload the page and try again.');
-					}
+					const data = JSON.parse(rawText);
 
-					const data = await response.json();
-					
 					if (!data.accessToken) {
 						throw new Error("Err04 : Please login into your account !");
 					}
@@ -509,40 +548,46 @@ document.addEventListener("DOMContentLoaded", async () => {
 					return data.accessToken;
 				} catch (error) {
 					console.error(error);
-					throw error;
+					throw new Error('Err03 : Invalid API response ! Please reload the page and try again.');
 				}
 			};
+			
+			// Function to retrieve the access token from the altered.gg page (API backup fallback)
+			const getAccessToken = () => {
+				const tokenMatch = pageHTML.match(/"accessToken":"(.*?)"/);
+				if (!tokenMatch) throw new Error("Err04 : Please login into your account !");
+				return tokenMatch[1];
+			};
 
-			// Récupération du token
+			// Retrieving the token
 			const accessToken = await getAccessTokenFromAPI();
-	
+
 			await getAllCardData(accessToken);
 
 			loadingMessageDiv.style.display = "none";
 			mainDiv.style.display = "block";
 
 		} catch (error) {
-			//console.error(error.message);
 			loadingMessageDiv.style.display = "none";
 			mainDiv.style.display = "none";
 			errorMessageDiv.style.display = "flex";
 			errorMessageDiv.textContent = error.message;
 		}
 	}
-		
-	// Gestion des clics sur les boutons
-    btnComplete.addEventListener("click", () => {
-		useUniques = 0;
-        fetchCollection(0);
-        document.getElementById("choiceButtons").style.display = "none";
-		loadingMessageDiv.style.display = "block";
-    });
 
-    btnUniques.addEventListener("click", () => {
-		useUniques = 1;
-        fetchCollection(1);
-        document.getElementById("choiceButtons").style.display = "none";
+	// Handling clicks on the buttons
+	btnComplete.addEventListener("click", () => {
+		useUniques = 0;
+		fetchCollection(0);
+		document.getElementById("choiceButtons").style.display = "none";
 		loadingMessageDiv.style.display = "block";
-    });
-	
+	});
+
+	btnUniques.addEventListener("click", () => {
+		useUniques = 1;
+		fetchCollection(1);
+		document.getElementById("choiceButtons").style.display = "none";
+		loadingMessageDiv.style.display = "block";
+	});
+
 });
