@@ -84,11 +84,86 @@ document.addEventListener("DOMContentLoaded", async () => {
 			);
 		});
 	};
-
-	// Populate the set select
+	
+	// Populate the set select (Altered-DB)
 	const setToDownload = document.getElementById("setSelect");
 	setToDownload.querySelectorAll("option:not([value='ALL'])").forEach(opt => opt.remove());
-	const excludedCodes = ['WCS25', 'TEST', 'WCQ25'];
+	const excludedCodes = ['TEST'];
+
+	let allCardSets = [];
+
+	const typeOrder = [
+		{ type: 1, label: "Main Sets" },
+		{ type: 0, label: "Other Sets" },
+	];
+
+	try {
+		const rawText = await fetchViaWorker("https://altered-db.com/api/altered/sets_ext");
+		const data = JSON.parse(rawText);
+
+		if (data?.['hydra:member']?.length) {
+			allCardSets = data['hydra:member']
+				.filter(set =>
+					set.reference &&
+					set.name &&
+					set.code &&
+					!excludedCodes.includes(set.code)
+				)
+				.map(set => {
+					if (set.reference === 'COREKS') set.code = 'BTGKS';
+					return {
+						reference: set.reference,
+						code: set.code,
+						name: set.name,
+						type: set.type,
+						id: parseInt(set.id, 10),
+						releaseDate: new Date(set.date)
+					};
+				});
+
+			// Sort by type order first, then by descending id
+			const typeIndex = type => typeOrder.findIndex(t => t.type === type);
+			allCardSets.sort((a, b) => {
+				const diffType = typeIndex(a.type) - typeIndex(b.type);
+				if (diffType !== 0) return diffType;
+				return b.id - a.id;
+			});
+
+			// Group sets by type
+			const typeGroups = {};
+			allCardSets.forEach(set => {
+				if (!typeGroups[set.type]) typeGroups[set.type] = [];
+				typeGroups[set.type].push(set);
+			});
+
+			// Create optgroups based on typeOrder
+			typeOrder.forEach(({ type, label }) => {
+				if (typeGroups[type]) {
+					const group = document.createElement("optgroup");
+					group.label = label;
+					typeGroups[type].forEach(set => {
+						const option = document.createElement("option");
+						option.value = set.reference;
+						option.textContent = set.name;
+						option.setAttribute("data-code", set.code);
+						group.appendChild(option);
+					});
+					setToDownload.appendChild(group);
+				}
+			});
+
+		} else {
+			console.warn("No sets found in API response.");
+		}
+	} catch (err) {
+		console.error("Error fetching card sets:", err);
+	}
+
+/*
+	// Populate the set select (Aletered API)
+	const setToDownload = document.getElementById("setSelect");
+	setToDownload.querySelectorAll("option:not([value='ALL'])").forEach(opt => opt.remove());
+	const excludedCodes = ['TEST'];
 
 	try {
 		const rawText = await fetchViaWorker("https://api.altered.gg/card_sets?locale=en-us");
@@ -110,10 +185,11 @@ document.addEventListener("DOMContentLoaded", async () => {
 					return {
 						reference: set.reference,
 						code: set.code,
-						name: set.name
+						name: set.name,
+						releaseDate: new Date(set.date) // date officielle de sortie
 					};
 				})
-				.reverse(); // Revers sets order
+				.sort((a, b) => b.releaseDate - a.releaseDate); // du + récent au + ancien
 
 			allCardSets.forEach(set => {
 				const option = document.createElement("option");
@@ -128,6 +204,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 	} catch (err) {
 		console.error("Error fetching card sets:", err);
 	}
+*/
 
 	// Change the button based on the select
 	setToDownload.addEventListener("change", function() {

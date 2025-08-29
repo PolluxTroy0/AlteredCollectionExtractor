@@ -73,6 +73,7 @@
 
 			#errorMessage {
 				color: red;
+				text-align: center;
 			}
 
 			#main {
@@ -90,14 +91,12 @@
 				font-size: 1.2em;
 			}
 
-			/* Conteneur boutons en flex */
 			#buttonsContainer {
 				display: flex;
 				justify-content: center;
 				gap: 15px;
 			}
 
-			/* Style des boutons */
 			#buttonsContainer button {
 				padding: 10px 20px;
 				font-size: 16px;
@@ -160,7 +159,7 @@
 			<br />
 			<h3>What do you want to extract ?</h3>
 			
-			<div id="setSelectorContainer" style="display: flex; justify-content: center; align-items: center; margin-top: 10px; gap: 10px;">
+			<div id="setSelectorContainer" style="justify-content: center; align-items: center; margin-top: 10px; gap: 10px;"><!--display: flex;-->
 				<span style="font-size: 1.1em;"><b>Select a card set :</b></span>
 				<select id="setSelect" style="padding: 5px; font-size: 1em;">
 					<option value="ALL" data-code="ALL">All Sets</option> <!-- Toujours présent -->
@@ -180,9 +179,11 @@
 
 			<br />
 			<br />
+			<!--
 			<i>Note: Due to Equinox's strict API rate limits, extracting your collection may be slower than before.</i>
 			<br />
 			<br />
+			-->
 		</div>
 		
 		<div id="main" class="tab-frame" style="display:none;">
