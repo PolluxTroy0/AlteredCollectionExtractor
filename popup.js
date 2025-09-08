@@ -51,13 +51,15 @@ document.addEventListener("DOMContentLoaded", async () => {
 	mainDiv.style.display = "none";
 	loadingMessageDiv.style.display = "none";
 
-	const updateLoadingMessage = (progress) => {
+	const updateLoadingMessage = (progress, set, setprogress) => {
 		loadingMessageDiv.innerHTML = `
 			<br/><br/>
 			Retrieving cards collection, please wait...<br>
 			Do not close this window or leave your browser !<br><br>
+			${set}: ${setprogress}%<br/>
+			<progress value="${setprogress}" max="100" style="width: 100%;"></progress><br/>
 			<progress value="${progress}" max="100" style="width: 100%;"></progress><br/>
-			Progress: ${progress}%
+			Overall Progress: ${progress}%
 			
 		`;
 	};
@@ -329,10 +331,10 @@ document.addEventListener("DOMContentLoaded", async () => {
 					const cardName = cardDetails.name || '?';
 					const cardType = cardDetails.cardType?.name || '?';
 					const cardSet = code;
+					const cardRef = cardDetails["@id"].split('/').pop();
 
-					detailedCollectionLinks.push(
-						`${factionName}\t${rarityName}\t${cardType}\t${cardSet}\t${statCard.inMyCollection}\t${cardName}`
-					);
+					detailedCollectionLinks.push(`${cardRef}\t${factionName}\t${rarityName}\t${cardType}\t${cardSet}\t${statCard.inMyCollection}\t${cardName}`);
+					//detailedCollectionLinks.push(`${cardRef};${factionName};${rarityName};${cardType};${cardSet};${statCard.inMyCollection};${cardName}`);
 				}
 			}
 
@@ -374,6 +376,9 @@ document.addEventListener("DOMContentLoaded", async () => {
 		if (selectedSet !== 'ALL') {
 			cardSets = cardSets.filter(set => set.reference === selectedSet);
 		}
+		
+		// Reverse Order
+		//cardSets.reverse();
 
 		return cardSets;
 	};
@@ -390,43 +395,44 @@ document.addEventListener("DOMContentLoaded", async () => {
 		let collectionTotal = 0;
 		let tradeTotal = 0;
 		let wantTotal = 0;
-		let completedRequests = 0;
 
-		// Rate limiter (2 requests/second)
-		const createRateLimiter = (maxRequestsPerSecond) => {
+		// Rate limiter (supports float/sec)
+		const createRateLimiter = (perSecond = 1.9, perMinute = 100) => {
 			let queue = [];
-			let activeCount = 0;
+			let availableSecondTokens = 0;
+			let availableMinuteTokens = perMinute;
+
+			// Accumulate tokens per second
+			setInterval(() => {
+				availableSecondTokens += perSecond;
+				if (availableSecondTokens > perSecond) availableSecondTokens = perSecond; // cap max
+			}, 1000);
+
+			// Reset tokens per minute
+			setInterval(() => {
+				availableMinuteTokens = perMinute;
+			}, 60 * 1000);
 
 			const processQueue = () => {
-				if (queue.length === 0) {
-					activeCount = 0;
-					return;
+				if (queue.length === 0) return;
+
+				// Consume only the integer part of tokens
+				while (queue.length > 0 && Math.floor(availableSecondTokens) > 0 && availableMinuteTokens > 0) {
+					const { fn, resolve, reject } = queue.shift();
+					availableSecondTokens--;
+					availableMinuteTokens--;
+
+					fn().then(resolve).catch(reject);
 				}
-				while (activeCount < maxRequestsPerSecond && queue.length > 0) {
-					const {
-						fn,
-						resolve,
-						reject
-					} = queue.shift();
-					activeCount++;
-					fn()
-						.then(resolve)
-						.catch(reject)
-						.finally(() => {
-							activeCount--;
-							// Waiting for 1.25 seconds for the api rate limit
-							setTimeout(processQueue, 1250);
-						});
+
+				if (queue.length > 0) {
+					setTimeout(processQueue, 100); // check frequently
 				}
 			};
 
 			const schedule = (fn) => {
 				return new Promise((resolve, reject) => {
-					queue.push({
-						fn,
-						resolve,
-						reject
-					});
+					queue.push({ fn, resolve, reject });
 					processQueue();
 				});
 			};
@@ -434,11 +440,14 @@ document.addEventListener("DOMContentLoaded", async () => {
 			return schedule;
 		};
 
-		const schedule = createRateLimiter(2); // 2 requests (per second)
+		const schedule = createRateLimiter(1.9, 100); // 1.9 req/sec, 100 req/min
+		
+		updateLoadingMessage(1, "Initializing, please wait...", 0);
 
+		// Fetch sets
 		const cardSets = await fetchCardSets();
 
-		// Function to calculate the total number of pages for a given set
+		// Function to calculate total pages for a set
 		const fetchCardDataForSet = async (accessToken, reference, code, isWantlist = false) => {
 			const fetchStats = isWantlist ? fetchCardDataStatsForSetWantList : fetchCardDataStatsForSet;
 			const initialStatsData = await schedule(() => fetchStats(accessToken, 1, reference));
@@ -446,28 +455,28 @@ document.addEventListener("DOMContentLoaded", async () => {
 			return totalPages;
 		};
 
-		// Calculate total pages for all sets (collection + wantlist)
-		const totalPagesForAllSets = await Promise.all(
-			cardSets.map(set => fetchCardDataForSet(accessToken, set.reference, set.code))
-		);
-		const totalPages = totalPagesForAllSets.reduce((acc, pages) => acc + pages, 0);
-		const totalRequests = totalPages * 2;
+		// Progress update (per set, per page)
+		const updateGlobalProgress = (setIndex, page, totalPagesForSet, isWantlist) => {
+			const setsTotal = cardSets.length * 2; // collection + wantlist
+			const basePercent = (setIndex / setsTotal) * 100; // progression jusqu'au bloc précédent
+			const setShare = 100 / setsTotal;                 // poids d'un bloc
 
-		const totalPagesForWantlist = await Promise.all(
-			cardSets.map(set => fetchCardDataForSet(accessToken, set.reference, set.code, true))
-		);
-		const totalPagesWantlist = totalPagesForWantlist.reduce((acc, pages) => acc + pages, 0);
-		const totalRequestsWantlist = totalPagesWantlist * 2;
+			// Avance locale du set (progression par page)
+			const localProgress = totalPagesForSet > 1 
+				? (page / totalPagesForSet) 
+				: (page / 2); // interpolation pour sets d'une seule page
+			const setProgress = localProgress * setShare;
 
-		// Progression update
-		const updateGlobalProgress = () => {
-			const totalGlobalRequests = totalRequests + totalRequestsWantlist;
-			const progressPercent = Math.round((completedRequests / totalGlobalRequests) * 100);
-			updateLoadingMessage(progressPercent);
+			const progressPercent = Math.min(100, Math.round(basePercent + setProgress));
+			const progressPercentForSet = Math.min(100, Math.round((page / totalPagesForSet) * 100));
+
+			const label = cardSets[Math.floor(setIndex / 2)].name + (isWantlist ? " (Wantlist)" : " (Collection)");
+
+			updateLoadingMessage(progressPercent, label, progressPercentForSet);
 		};
 
-		// Function to fetch data of a page (stats + cards), going through the rate limiter
-		const fetchPageData = async (accessToken, page, reference, code, isWantlist = false) => {
+		// Fetch data for a page
+		const fetchPageData = async (accessToken, page, reference, code, isWantlist = false, currentSet = null, totalPagesForSet = 0, setIndex = 0) => {
 			const fetchStats = isWantlist ? fetchCardDataStatsForSetWantList : fetchCardDataStatsForSet;
 
 			// Schedule the 2 requests via the rate limiter
@@ -489,36 +498,41 @@ document.addEventListener("DOMContentLoaded", async () => {
 				wantTotal += links.wantCount;
 			}
 
-			completedRequests += 2;
-			updateGlobalProgress();
+			updateGlobalProgress(setIndex, page, totalPagesForSet, isWantlist);
 		};
 
-		// Loop over each set page by page sequentially (no batching or sleeping needed)
-		for (const set of cardSets) {
+		// Loop over all sets sequentially
+		for (let i = 0; i < cardSets.length; i++) {
+			const set = cardSets[i];
+
+			// Collection
 			const totalPagesForSet = await fetchCardDataForSet(accessToken, set.reference, set.code);
 			for (let page = 1; page <= totalPagesForSet; page++) {
-				await fetchPageData(accessToken, page, set.reference, set.code);
+				await fetchPageData(accessToken, page, set.reference, set.code, false, set, totalPagesForSet, i * 2);
 			}
-		}
 
-		for (const set of cardSets) {
+			// Wantlist
 			const totalPagesForSetWantlist = await fetchCardDataForSet(accessToken, set.reference, set.code, true);
 			for (let page = 1; page <= totalPagesForSetWantlist; page++) {
-				await fetchPageData(accessToken, page, set.reference, set.code, true);
+				await fetchPageData(accessToken, page, set.reference, set.code, true, set, totalPagesForSetWantlist, i * 2 + 1);
 			}
 		}
+		
+		// Toutes les données ont été récupérées, on force la barre à 100%
+		updateLoadingMessage(100, "Completed", 100);
+		await new Promise(resolve => setTimeout(resolve, 1000));
 
-		// Updating the textareas
+		// Update textareas and totals
 		collectionTextarea.value = allLinks.collection.join('\n');
 		wantListTextarea.value = allLinks.want.join('\n');
 		tradeListTextarea.value = allLinks.trade.join('\n');
 		collectionCSVTextarea.value = allLinks.detailedCollection.join('\n');
 
-		// Updating the totals
 		collectionCountSpan.textContent = collectionTotal;
 		tradeListCountSpan.textContent = tradeTotal;
 		wantListCountSpan.textContent = wantTotal;
 
+		// Foiler filtering (existing logic)
 		if (useUniques === 0) {
 			/*
 			// Add promo/events non owned cards (Add tokens ?), only for global collection
