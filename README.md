@@ -2,7 +2,7 @@
 
 This browser extension lets you download your **card collection**, **want list**, and **trade list** from [Altered.gg](https://altered.gg) using the official API. The downloaded data is in the following format: `Quantity ID`.
 
-You can also retrieve your collection in a **CSV format** with the following columns: card name, faction, rarity, set, type, and quantity.
+You can also retrieve your collection in a **CSV format** (tab separated) with the following columns: card ID, card name, faction, rarity, set, type, and quantity. You can then paste it directly into an Excel sheet if needed.
 
 **All operations are performed locally** and stay within your browser for security reasons.
 
