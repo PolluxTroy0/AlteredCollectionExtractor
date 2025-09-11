@@ -37,5 +37,4 @@ This extension uses your **Bearer token** only in the browser. It is **never sto
 
 ## Source Code
 
-You can review the source code of the current version here:  
-[View Source](https://robwu.nl/crxviewer/?crx=https%3A%2F%2Fchromewebstore.google.com%2Fdetail%2Faltered-collection-extrac%2Foilacpbjlailfffkpmpklcgipomnfpom)
+You can review the source code of the current version here: [View Source](https://robwu.nl/crxviewer/?crx=https%3A%2F%2Fchromewebstore.google.com%2Fdetail%2Faltered-collection-extrac%2Foilacpbjlailfffkpmpklcgipomnfpom)
