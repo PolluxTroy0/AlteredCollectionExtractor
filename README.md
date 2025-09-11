@@ -17,9 +17,11 @@ You can also retrieve your collection in a **CSV format** with the following col
 
 Here are some screenshots to illustrate the extension:
 
-![Screenshot 1](image1.png)  
-![Screenshot 2](image2.png)  
-![Screenshot 3](image3.png)  
+<div style="display: flex; gap: 10px;">
+  <img src="image1.png" width="200" alt="Screenshot 1">
+  <img src="image2.png" width="200" alt="Screenshot 2">
+  <img src="image3.png" width="200" alt="Screenshot 3">
+</div>
 
 ## Downloads
 
