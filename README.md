@@ -13,6 +13,14 @@ You can also retrieve your collection in a **CSV format** with the following col
 - Trade List  
 - Collection CSV (Tab Separated)
 
+## Screenshots
+
+Here are some screenshots to illustrate the extension:
+
+![Screenshot 1](image1.png)  
+![Screenshot 2](image2.png)  
+![Screenshot 3](image3.png)  
+
 ## Downloads
 
 - **Chrome:** [Download from Chrome Web Store](https://chromewebstore.google.com/detail/altered-collection-extrac/oilacpbjlailfffkpmpklcgipomnfpom)  
