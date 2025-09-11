@@ -18,9 +18,9 @@ You can also retrieve your collection in a **CSV format** with the following col
 Here are some screenshots to illustrate the extension:
 
 <div style="display: flex; gap: 10px;">
-  <img src="image1.png" width="200" alt="Screenshot 1">
-  <img src="image2.png" width="200" alt="Screenshot 2">
-  <img src="image3.png" width="200" alt="Screenshot 3">
+  <img src="image1.png" width="300" alt="Screenshot 1">
+  <img src="image2.png" width="300" alt="Screenshot 2">
+  <img src="image3.png" width="300" alt="Screenshot 3">
 </div>
 
 ## Downloads
