@@ -378,7 +378,7 @@ document.addEventListener("DOMContentLoaded", async () => {
 		}
 		
 		// Reverse Order
-		//cardSets.reverse();
+		cardSets.reverse();
 
 		return cardSets;
 	};
