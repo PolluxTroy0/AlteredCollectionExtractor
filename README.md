@@ -2,7 +2,7 @@
 
 This browser extension lets you download your **card collection**, **want list**, and **trade list** from [Altered.gg](https://altered.gg) using the official API. The downloaded data is in the following format: `Quantity ID`.
 
-You can also retrieve your collection in a **CSV format** with the following columns: card name, faction, rarity, set, type, and quantity.
+You can also retrieve your collection in a **CSV format** (tab separated) with the following columns: card ID, card name, faction, rarity, set, type, and quantity. You can then paste it directly into an Excel sheet if needed.
 
 **All operations are performed locally** and stay within your browser for security reasons.
 
@@ -12,6 +12,16 @@ You can also retrieve your collection in a **CSV format** with the following col
 - Want List  
 - Trade List  
 - Collection CSV (Tab Separated)
+
+## Screenshots
+
+Here are some screenshots to illustrate the extension:
+
+<div style="display: flex; gap: 10px;">
+  <img src="image1.png" width="300" alt="Screenshot 1">
+  <img src="image2.png" width="300" alt="Screenshot 2">
+  <img src="image3.png" width="300" alt="Screenshot 3">
+</div>
 
 ## Downloads
 
@@ -27,5 +37,4 @@ This extension uses your **Bearer token** only in the browser. It is **never sto
 
 ## Source Code
 
-You can review the source code of the current version here:  
-[View Source](https://robwu.nl/crxviewer/?crx=https%3A%2F%2Fchromewebstore.google.com%2Fdetail%2Faltered-collection-extrac%2Foilacpbjlailfffkpmpklcgipomnfpom)
+You can review the source code of the current version here: [View Source](https://robwu.nl/crxviewer/?crx=https%3A%2F%2Fchromewebstore.google.com%2Fdetail%2Faltered-collection-extrac%2Foilacpbjlailfffkpmpklcgipomnfpom)
